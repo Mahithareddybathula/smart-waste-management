@@ -4,7 +4,10 @@
 
 // ===== CONFIGURATION =====
 const CONFIG = {
-  API_BASE_URL: "http://localhost:5000/api",
+  API_BASE_URL:
+    window.location.hostname === "localhost"
+      ? "http://localhost:5000/api"
+      : window.API_BASE_URL || "/.netlify/functions",
   MAP_DEFAULT_CENTER: { lat: 40.7128, lng: -74.006 }, // New York City
   MAP_DEFAULT_ZOOM: 13,
   GEOLOCATION_TIMEOUT: 10000,

@@ -1,0 +1,110 @@
+[build]
+  # Base directory where the build command is executed
+  base = "."
+
+  # Directory to publish
+  publish = "frontend"
+
+  # Build command to prepare the application
+  command = "npm install && npm run build:frontend"
+
+[build.environment]
+  # Node.js version for functions
+  NODE_VERSION = "18"
+  AWS_LAMBDA_JS_RUNTIME = "nodejs18.x"
+
+# Functions directory
+[functions]
+  directory = "netlify/functions"
+
+# Build processing
+[build.processing]
+  skip_processing = false
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' /.netlify/functions/;"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# API routes to Netlify functions
+[[redirects]]
+  from = "/api/bins"
+  to = "/.netlify/functions/bins"
+  status = 200
+
+[[redirects]]
+  from = "/api/bins/:id"
+  to = "/.netlify/functions/bins?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/bins/:id/empty"
+  to = "/.netlify/functions/empty-bin?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/users"
+  to = "/.netlify/functions/users"
+  status = 200
+
+[[redirects]]
+  from = "/api/users/:id"
+  to = "/.netlify/functions/users?id=:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/collections"
+  to = "/.netlify/functions/collections"
+  status = 200
+
+[[redirects]]
+  from = "/api/routes"
+  to = "/.netlify/functions/routes"
+  status = 200
+
+# SPA fallback - must be last
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment variables for different contexts
+[context.production.environment]
+  NODE_ENV = "production"
+  MONGODB_URI = "your-production-mongodb-connection-string"
+
+[context.branch-deploy.environment]
+  NODE_ENV = "development"
+  MONGODB_URI = "your-development-mongodb-connection-string"
+
+[context.deploy-preview.environment]
+  NODE_ENV = "staging"
+  MONGODB_URI = "your-staging-mongodb-connection-string"
+
+# Build hooks for dependency management
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Form handling
+[forms]
+  settings = { spa = true }

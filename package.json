@@ -9,6 +9,12 @@
     "demo": "node demo-server.js",
     "seed": "node seed.js",
     "setup": "npm install && npm run seed",
+    "build": "echo 'Backend ready for deployment'",
+    "build:frontend": "cp -r frontend/* dist/ || xcopy /E /I frontend dist",
+    "serve": "cd frontend && python -m http.server 8080 || cd frontend && npx serve .",
+    "deploy": "npm run build && echo 'Ready for deployment'",
+    "railway:start": "npm run seed && npm start",
+    "postinstall": "echo 'Installation complete'",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf node_modules package-lock.json && npm install"
   },
@@ -33,6 +39,7 @@
     "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   }
 }

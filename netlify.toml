@@ -1,0 +1,59 @@
+[build]
+  # Base directory where the build command is executed
+  base = "frontend"
+
+  # Directory to publish (relative to base directory)
+  publish = "."
+
+  # Build command (empty for static files)
+  command = ""
+
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "18"
+
+# Redirect rules for SPA-like behavior
+[[redirects]]
+  # Redirect all routes to index.html for client-side routing
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Environment variables (for production)
+[context.production.environment]
+  NODE_ENV = "production"
+
+# Environment variables (for branch deploys)
+[context.branch-deploy.environment]
+  NODE_ENV = "development"
+
+# Handle API requests - redirect to your backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://your-backend-url.com/api/:splat"
+  status = 200
+  force = true
