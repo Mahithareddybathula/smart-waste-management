@@ -384,12 +384,22 @@ function initializeMap(
   mapContainer.innerHTML = "";
 
   try {
+    console.log("🗺️ Creating Leaflet map instance...");
+
     // Initialize Leaflet map
     map = L.map(containerId, {
       center: [center.lat, center.lng],
       zoom: zoom,
       zoomControl: true,
       attributionControl: true,
+    });
+
+    // Immediately set global reference and verify
+    window.map = map;
+    console.log("✅ Map initialized and window.map set:", !!window.map);
+    console.log("✅ Map methods available:", {
+      setView: typeof window.map.setView,
+      getCenter: typeof window.map.getCenter,
     });
 
     // Add OpenStreetMap tiles
@@ -416,7 +426,8 @@ function initializeMap(
 
     // Map ready event
     map.whenReady(function () {
-      console.log("Map is ready");
+      console.log("✅ Map is fully ready and operational");
+      window.map = map; // Ensure global reference is set
       showAlert("Map loaded successfully!", "success");
     });
 
@@ -793,6 +804,15 @@ function updateStatistics(bins) {
 async function initializeFindPage() {
   console.log("Initializing Find Nearby Bins page...");
 
+  // Wait for DOM to be fully ready
+  await new Promise((resolve) => {
+    if (document.readyState === "complete") {
+      resolve();
+    } else {
+      window.addEventListener("load", resolve, { once: true });
+    }
+  });
+
   // Initialize map first
   const mapElement = document.getElementById("map-container");
   if (mapElement) {
@@ -800,8 +820,36 @@ async function initializeFindPage() {
       '<div class="map-loading"><div><i class="fas fa-map-marker-alt" style="font-size: 3rem; color: #27ae60; margin-bottom: 1rem;"></i><p>Loading map...</p></div></div>';
   }
 
-  // Initialize map
-  initializeMap("map-container");
+  // Wait for Leaflet to be available
+  let leafletReady = false;
+  let attempts = 0;
+  while (!leafletReady && attempts < 50) {
+    if (typeof L !== "undefined") {
+      leafletReady = true;
+      console.log("✅ Leaflet is ready");
+    } else {
+      console.log(`⏳ Waiting for Leaflet (attempt ${attempts + 1}/50)`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      attempts++;
+    }
+  }
+
+  if (!leafletReady) {
+    console.error("❌ Leaflet failed to load");
+    showAlert("Map library failed to load. Please refresh the page.", "error");
+    return;
+  }
+
+  // Initialize map with immediate availability
+  console.log("🗺️ Starting map initialization...");
+  const mapInstance = initializeMap("map-container");
+
+  if (mapInstance) {
+    window.map = mapInstance;
+    console.log("✅ Map instance set to window.map");
+  } else {
+    console.error("❌ Map initialization failed");
+  }
 
   // Check geolocation support
   const hasGeolocation = await checkGeolocationSupport();
