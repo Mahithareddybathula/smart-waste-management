@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Waste Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="description" content="Smart Waste Management System - Find and manage waste bins in your area">
+    <meta name="keywords" content="waste management, bins, recycling, environment">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="nav-logo">
+                <i class="fas fa-recycle"></i> Smart Waste Management
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="find.html" class="nav-link">Find Bins</a>
+                <a href="add.html" class="nav-link">Add Bin</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container main-content">
+        <!-- Hero Section -->
+        <div class="card fade-in">
+            <div class="card-header">
+                <h1><i class="fas fa-leaf"></i> Smart Waste Management System</h1>
+                <p style="font-size: 1.2rem; color: #666; margin: 0;">
+                    Helping communities manage waste efficiently with smart bin tracking
+                </p>
+            </div>
+            <div class="card-body">
+                <p style="font-size: 1.1rem; margin-bottom: 2rem; color: #555;">
+                    Welcome to our Smart Waste Management System! Find nearby waste bins,
+                    check their status, and help keep your community clean by adding new bins to our shared map.
+                </p>
+
+                <!-- Main Action Buttons -->
+                <div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
+                    <a href="find.html" class="btn btn-primary btn-large">
+                        <i class="fas fa-search"></i> Find Nearby Bins
+                    </a>
+                    <a href="add.html" class="btn btn-secondary btn-large">
+                        <i class="fas fa-plus"></i> Add a Bin
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="card card-large fade-in">
+            <div class="card-header">
+                <h2><i class="fas fa-star"></i> Features</h2>
+            </div>
+            <div class="card-body">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <i class="fas fa-map-marker-alt" style="font-size: 2rem; color: #27ae60; margin-bottom: 1rem;"></i>
+                        <h3>Location-Based</h3>
+                        <p>Automatically detects your location and shows nearby waste bins on an interactive map.</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-traffic-light" style="font-size: 2rem; color: #f39c12; margin-bottom: 1rem;"></i>
+                        <h3>Real-Time Status</h3>
+                        <p>See if bins are empty, half-full, or full with color-coded status indicators.</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-users" style="font-size: 2rem; color: #3498db; margin-bottom: 1rem;"></i>
+                        <h3>Community-Driven</h3>
+                        <p>Help your community by adding new bins and updating their status.</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-route" style="font-size: 2rem; color: #e74c3c; margin-bottom: 1rem;"></i>
+                        <h3>Navigation</h3>
+                        <p>Get directions to any bin location with integrated Google Maps navigation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works Section -->
+        <div class="card card-large fade-in">
+            <div class="card-header">
+                <h2><i class="fas fa-question-circle"></i> How It Works</h2>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 1rem;">
+                    <div style="text-align: center; padding: 1rem;">
+                        <div style="background: #27ae60; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: bold;">1</div>
+                        <h3>Find Bins</h3>
+                        <p>Click "Find Nearby Bins" to see all waste bins in your area. The app will automatically detect your location and show you the closest bins.</p>
+                    </div>
+                    <div style="text-align: center; padding: 1rem;">
+                        <div style="background: #3498db; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: bold;">2</div>
+                        <h3>Check Status</h3>
+                        <p>Each bin shows its current status: 🟢 Empty, 🟡 Half-Full, or 🔴 Full. This helps you find the right bin for your waste.</p>
+                    </div>
+                    <div style="text-align: center; padding: 1rem;">
+                        <div style="background: #f39c12; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: bold;">3</div>
+                        <h3>Navigate</h3>
+                        <p>Click "Go Here" on any bin to get turn-by-turn directions using Google Maps. Never get lost looking for a bin again!</p>
+                    </div>
+                    <div style="text-align: center; padding: 1rem;">
+                        <div style="background: #e74c3c; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; font-weight: bold;">4</div>
+                        <h3>Add & Update</h3>
+                        <p>Help your community by adding new bins or updating the status of existing ones. Together, we can keep our neighborhoods clean!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="card fade-in">
+            <div class="card-header">
+                <h2><i class="fas fa-chart-bar"></i> Community Impact</h2>
+            </div>
+            <div class="card-body">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <span id="total-bins" class="stat-number">0</span>
+                        <div class="stat-label">Total Bins</div>
+                    </div>
+                    <div class="stat-card">
+                        <span id="empty-bins" class="stat-number">0</span>
+                        <div class="stat-label">Empty Bins</div>
+                    </div>
+                    <div class="stat-card">
+                        <span id="half-full-bins" class="stat-number">0</span>
+                        <div class="stat-label">Half-Full Bins</div>
+                    </div>
+                    <div class="stat-card">
+                        <span id="full-bins" class="stat-number">0</span>
+                        <div class="stat-label">Full Bins</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="card text-center fade-in">
+            <div class="card-body">
+                <h2 style="color: #27ae60; margin-bottom: 1rem;">Ready to Get Started?</h2>
+                <p style="font-size: 1.1rem; margin-bottom: 2rem;">
+                    Join our community of environmentally conscious citizens working together to manage waste more efficiently.
+                </p>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <a href="find.html" class="btn btn-primary btn-large">
+                        <i class="fas fa-search"></i> Start Finding Bins
+                    </a>
+                    <a href="add.html" class="btn btn-success btn-large">
+                        <i class="fas fa-plus"></i> Add Your First Bin
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Smart Waste Management System. Making communities cleaner, one bin at a time.</p>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+                <i class="fas fa-leaf" style="color: #27ae60;"></i>
+                Built with ❤️ for a sustainable future
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+
+    <!-- Load statistics on homepage -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Load bins data to show statistics
+                const response = await fetch('http://localhost:5000/api/bins');
+                if (response.ok) {
+                    const data = await response.json();
+                    const bins = data.data || [];
+
+                    // Update statistics
+                    const stats = {
+                        total: bins.length,
+                        empty: bins.filter(bin => bin.status === 'Empty').length,
+                        halfFull: bins.filter(bin => bin.status === 'Half-Full').length,
+                        full: bins.filter(bin => bin.status === 'Full').length
+                    };
+
+                    document.getElementById('total-bins').textContent = stats.total;
+                    document.getElementById('empty-bins').textContent = stats.empty;
+                    document.getElementById('half-full-bins').textContent = stats.halfFull;
+                    document.getElementById('full-bins').textContent = stats.full;
+                }
+            } catch (error) {
+                console.log('Could not load statistics:', error.message);
+                // Keep default values if API is not available
+            }
+        });
+    </script>
+</body>
+</html>
