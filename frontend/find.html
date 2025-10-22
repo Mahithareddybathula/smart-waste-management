@@ -25,6 +25,20 @@
             // Define functions immediately to prevent "not defined" errors
             window.refreshBins = function () {
                 console.log("Refresh clicked - immediate function");
+
+                // Check if CONFIG is available
+                if (typeof CONFIG === "undefined") {
+                    console.error("CONFIG not loaded yet");
+                    const alert = document.createElement("div");
+                    alert.textContent = "Loading configuration, please wait...";
+                    alert.style.cssText =
+                        "position:fixed;top:80px;right:20px;background:#fef5e7;color:#856404;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                    alert.onclick = () => alert.remove();
+                    document.body.appendChild(alert);
+                    setTimeout(() => alert.remove(), 3000);
+                    return;
+                }
+
                 fetch(CONFIG.API_BASE_URL + "/bins")
                     .then((response) => response.json())
                     .then((data) => {
@@ -463,10 +477,21 @@
 
         <!-- Scripts -->
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="env-config.js"></script>
+        <script src="mobile-fixes.js"></script>
         <script src="script.js"></script>
 
         <!-- Initialize functions immediately -->
         <script>
+            // Wait for CONFIG to be available
+            function waitForConfig(callback) {
+                if (typeof CONFIG !== "undefined") {
+                    callback();
+                } else {
+                    setTimeout(() => waitForConfig(callback), 100);
+                }
+            }
+
             // Global variables
             let allBins = [];
             let filteredBins = [];
@@ -555,7 +580,15 @@
                 showAlert("Refreshing bins data...", "info");
 
                 try {
-                    const response = await fetch(CONFIG.API_BASE_URL + "/bins");
+                    // Wait for CONFIG if not available
+                    if (typeof CONFIG === "undefined") {
+                        showAlert("Loading configuration...", "info");
+                        await new Promise((resolve) => waitForConfig(resolve));
+                    }
+
+                    const apiUrl = CONFIG.API_BASE_URL + "/bins";
+                    console.log("Fetching from:", apiUrl);
+                    const response = await fetch(apiUrl);
                     if (response.ok) {
                         const data = await response.json();
                         window.allBins = data.data || [];
@@ -694,7 +727,16 @@
             async function loadInitialData() {
                 try {
                     console.log("Loading initial data...");
-                    const response = await fetch(CONFIG.API_BASE_URL + "/bins");
+
+                    // Wait for CONFIG if not available
+                    if (typeof CONFIG === "undefined") {
+                        console.log("Waiting for CONFIG...");
+                        await new Promise((resolve) => waitForConfig(resolve));
+                    }
+
+                    const apiUrl = CONFIG.API_BASE_URL + "/bins";
+                    console.log("Fetching from:", apiUrl);
+                    const response = await fetch(apiUrl);
 
                     if (response.ok) {
                         const data = await response.json();
@@ -736,12 +778,22 @@
             window.showAlert = showAlert;
             window.updateVisibleStats = updateVisibleStats;
 
-            // Load data when DOM is ready
-            if (document.readyState === "loading") {
-                document.addEventListener("DOMContentLoaded", loadInitialData);
-            } else {
-                loadInitialData();
+            // Load data when DOM is ready and CONFIG is available
+            function initializeWhenReady() {
+                waitForConfig(() => {
+                    if (document.readyState === "loading") {
+                        document.addEventListener(
+                            "DOMContentLoaded",
+                            loadInitialData,
+                        );
+                    } else {
+                        loadInitialData();
+                    }
+                });
             }
+
+            // Start initialization
+            initializeWhenReady();
 
             console.log("Find page functions loaded and ready!");
         </script>
