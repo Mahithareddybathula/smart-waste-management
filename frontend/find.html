@@ -1,307 +1,486 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Find Nearby Bins - Smart Waste Management System</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <meta name="description" content="Find nearby waste bins with real-time status updates">
-    <meta name="keywords" content="waste bins, nearby, location, map">
-</head>
-<body>
-    <!-- Immediate function definitions to prevent reference errors -->
-    <script>
-        // Define functions immediately to prevent "not defined" errors
-        window.refreshBins = function() {
-            console.log('Refresh clicked - immediate function');
-            fetch('http://localhost:5000/api/bins')
-                .then(response => response.json())
-                .then(data => {
-                    const bins = data.data || [];
-                    // Update stats
-                    document.getElementById('visible-total').textContent = bins.length;
-                    document.getElementById('visible-empty').textContent = bins.filter(b => b.status === 'Empty').length;
-                    document.getElementById('visible-half-full').textContent = bins.filter(b => b.status === 'Half-Full').length;
-                    document.getElementById('visible-full').textContent = bins.filter(b => b.status === 'Full').length;
-                    // Show success message
-                    const alert = document.createElement('div');
-                    alert.textContent = 'Refreshed! Found ' + bins.length + ' bins';
-                    alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
-                    alert.onclick = () => alert.remove();
-                    document.body.appendChild(alert);
-                    setTimeout(() => alert.remove(), 3000);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    const alert = document.createElement('div');
-                    alert.textContent = 'Error refreshing data';
-                    alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
-                    alert.onclick = () => alert.remove();
-                    document.body.appendChild(alert);
-                    setTimeout(() => alert.remove(), 3000);
-                });
-        };
-
-        window.centerOnUser = function() {
-            console.log('Center on user clicked - immediate function');
-            if (!navigator.geolocation) {
-                const alert = document.createElement('div');
-                alert.textContent = 'Geolocation not supported';
-                alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
-                alert.onclick = () => alert.remove();
-                document.body.appendChild(alert);
-                setTimeout(() => alert.remove(), 3000);
-                return;
-            }
-
-            const loadingAlert = document.createElement('div');
-            loadingAlert.textContent = 'Getting your location...';
-            loadingAlert.style.cssText = 'position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;';
-            document.body.appendChild(loadingAlert);
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    loadingAlert.remove();
-                    if (window.map) {
-                        window.map.setView([position.coords.latitude, position.coords.longitude], 15);
-                        const alert = document.createElement('div');
-                        alert.textContent = 'Centered on your location!';
-                        alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Find Nearby Bins - Smart Waste Management System</title>
+        <link rel="stylesheet" href="styles.css" />
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
+        <meta
+            name="description"
+            content="Find nearby waste bins with real-time status updates"
+        />
+        <meta name="keywords" content="waste bins, nearby, location, map" />
+    </head>
+    <body>
+        <!-- Immediate function definitions to prevent reference errors -->
+        <script>
+            // Define functions immediately to prevent "not defined" errors
+            window.refreshBins = function () {
+                console.log("Refresh clicked - immediate function");
+                fetch(CONFIG.API_BASE_URL + "/bins")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const bins = data.data || [];
+                        // Update stats
+                        document.getElementById("visible-total").textContent =
+                            bins.length;
+                        document.getElementById("visible-empty").textContent =
+                            bins.filter((b) => b.status === "Empty").length;
+                        document.getElementById(
+                            "visible-half-full",
+                        ).textContent = bins.filter(
+                            (b) => b.status === "Half-Full",
+                        ).length;
+                        document.getElementById("visible-full").textContent =
+                            bins.filter((b) => b.status === "Full").length;
+                        // Show success message
+                        const alert = document.createElement("div");
+                        alert.textContent =
+                            "Refreshed! Found " + bins.length + " bins";
+                        alert.style.cssText =
+                            "position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
                         alert.onclick = () => alert.remove();
                         document.body.appendChild(alert);
                         setTimeout(() => alert.remove(), 3000);
-                    }
-                },
-                (error) => {
-                    loadingAlert.remove();
-                    const alert = document.createElement('div');
-                    alert.textContent = 'Location error: ' + (error.code === 1 ? 'Permission denied' : 'Position unavailable');
-                    alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
+                    })
+                    .catch((error) => {
+                        console.error("Error:", error);
+                        const alert = document.createElement("div");
+                        alert.textContent = "Error refreshing data";
+                        alert.style.cssText =
+                            "position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                        alert.onclick = () => alert.remove();
+                        document.body.appendChild(alert);
+                        setTimeout(() => alert.remove(), 3000);
+                    });
+            };
+
+            window.centerOnUser = function () {
+                console.log("Center on user clicked - immediate function");
+                if (!navigator.geolocation) {
+                    const alert = document.createElement("div");
+                    alert.textContent = "Geolocation not supported";
+                    alert.style.cssText =
+                        "position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
                     alert.onclick = () => alert.remove();
                     document.body.appendChild(alert);
                     setTimeout(() => alert.remove(), 3000);
+                    return;
                 }
-            );
-        };
 
-        window.filterBins = function() {
-            console.log('Filter bins called - immediate function');
-            const statusFilter = document.getElementById('status-filter');
-            if (statusFilter) {
-                const filterValue = statusFilter.value;
-                const alert = document.createElement('div');
-                alert.textContent = filterValue ? 'Filtered by: ' + filterValue : 'Showing all bins';
-                alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
-                alert.onclick = () => alert.remove();
-                document.body.appendChild(alert);
-                setTimeout(() => alert.remove(), 2000);
-            }
-        };
+                const loadingAlert = document.createElement("div");
+                loadingAlert.textContent = "Getting your location...";
+                loadingAlert.style.cssText =
+                    "position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;";
+                document.body.appendChild(loadingAlert);
 
-        window.shareLocation = function() {
-            console.log('Share location called - immediate function');
-            const currentUrl = window.location.href;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(currentUrl).then(() => {
-                    const alert = document.createElement('div');
-                    alert.textContent = 'Page URL copied to clipboard!';
-                    alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        loadingAlert.remove();
+                        if (window.map) {
+                            window.map.setView(
+                                [
+                                    position.coords.latitude,
+                                    position.coords.longitude,
+                                ],
+                                15,
+                            );
+                            const alert = document.createElement("div");
+                            alert.textContent = "Centered on your location!";
+                            alert.style.cssText =
+                                "position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                            alert.onclick = () => alert.remove();
+                            document.body.appendChild(alert);
+                            setTimeout(() => alert.remove(), 3000);
+                        }
+                    },
+                    (error) => {
+                        loadingAlert.remove();
+                        const alert = document.createElement("div");
+                        alert.textContent =
+                            "Location error: " +
+                            (error.code === 1
+                                ? "Permission denied"
+                                : "Position unavailable");
+                        alert.style.cssText =
+                            "position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                        alert.onclick = () => alert.remove();
+                        document.body.appendChild(alert);
+                        setTimeout(() => alert.remove(), 3000);
+                    },
+                );
+            };
+
+            window.filterBins = function () {
+                console.log("Filter bins called - immediate function");
+                const statusFilter = document.getElementById("status-filter");
+                if (statusFilter) {
+                    const filterValue = statusFilter.value;
+                    const alert = document.createElement("div");
+                    alert.textContent = filterValue
+                        ? "Filtered by: " + filterValue
+                        : "Showing all bins";
+                    alert.style.cssText =
+                        "position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
                     alert.onclick = () => alert.remove();
                     document.body.appendChild(alert);
-                    setTimeout(() => alert.remove(), 3000);
-                }).catch(() => {
-                    const alert = document.createElement('div');
-                    alert.textContent = 'Share this URL: ' + currentUrl;
-                    alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
+                    setTimeout(() => alert.remove(), 2000);
+                }
+            };
+
+            window.shareLocation = function () {
+                console.log("Share location called - immediate function");
+                const currentUrl = window.location.href;
+                if (navigator.clipboard) {
+                    navigator.clipboard
+                        .writeText(currentUrl)
+                        .then(() => {
+                            const alert = document.createElement("div");
+                            alert.textContent = "Page URL copied to clipboard!";
+                            alert.style.cssText =
+                                "position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                            alert.onclick = () => alert.remove();
+                            document.body.appendChild(alert);
+                            setTimeout(() => alert.remove(), 3000);
+                        })
+                        .catch(() => {
+                            const alert = document.createElement("div");
+                            alert.textContent = "Share this URL: " + currentUrl;
+                            alert.style.cssText =
+                                "position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                            alert.onclick = () => alert.remove();
+                            document.body.appendChild(alert);
+                            setTimeout(() => alert.remove(), 5000);
+                        });
+                } else {
+                    const alert = document.createElement("div");
+                    alert.textContent = "Share this URL: " + currentUrl;
+                    alert.style.cssText =
+                        "position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
                     alert.onclick = () => alert.remove();
                     document.body.appendChild(alert);
                     setTimeout(() => alert.remove(), 5000);
-                });
-            } else {
-                const alert = document.createElement('div');
-                alert.textContent = 'Share this URL: ' + currentUrl;
-                alert.style.cssText = 'position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;';
-                alert.onclick = () => alert.remove();
-                document.body.appendChild(alert);
-                setTimeout(() => alert.remove(), 5000);
-            }
-        };
-    </script>
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <div class="container nav-container">
-            <a href="index.html" class="nav-logo">
-                <i class="fas fa-recycle"></i> Smart Waste Management
-            </a>
-            <div class="nav-links">
-                <a href="index.html" class="nav-link">Home</a>
-                <a href="find.html" class="nav-link" style="background-color: rgba(255,255,255,0.2);">Find Bins</a>
-                <a href="add.html" class="nav-link">Add Bin</a>
+                }
+            };
+        </script>
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="container nav-container">
+                <a href="index.html" class="nav-logo">
+                    <i class="fas fa-recycle"></i> Smart Waste Management
+                </a>
+                <div class="nav-links">
+                    <a href="index.html" class="nav-link">Home</a>
+                    <a
+                        href="find.html"
+                        class="nav-link"
+                        style="background-color: rgba(255, 255, 255, 0.2)"
+                        >Find Bins</a
+                    >
+                    <a href="add.html" class="nav-link">Add Bin</a>
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
 
-    <!-- Main Content -->
-    <div class="container main-content">
-        <!-- Page Header -->
-        <div class="card fade-in">
-            <div class="card-header">
-                <h1><i class="fas fa-search"></i> Find Nearby Bins</h1>
-                <p style="color: #666; margin: 0;">
-                    Discover waste bins near your location with real-time status updates
-                </p>
+        <!-- Main Content -->
+        <div class="container main-content">
+            <!-- Page Header -->
+            <div class="card fade-in">
+                <div class="card-header">
+                    <h1><i class="fas fa-search"></i> Find Nearby Bins</h1>
+                    <p style="color: #666; margin: 0">
+                        Discover waste bins near your location with real-time
+                        status updates
+                    </p>
+                </div>
             </div>
-        </div>
 
-        <!-- Filter Section -->
-        <div class="filter-container fade-in">
-            <div class="filter-row">
-                <span class="filter-label">
-                    <i class="fas fa-filter"></i> Filter by Status:
-                </span>
-                <select id="status-filter" class="form-control" style="width: auto;" onchange="filterBins()">
-                    <option value="">All Bins</option>
-                    <option value="Empty">Empty 🟢</option>
-                    <option value="Half-Full">Half-Full 🟡</option>
-                    <option value="Full">Full 🔴</option>
-                </select>
-                <button class="btn btn-secondary btn-small" onclick="refreshBins()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-                <button class="btn btn-primary btn-small" onclick="centerOnUser()">
-                    <i class="fas fa-crosshairs"></i> My Location
-                </button>
+            <!-- Filter Section -->
+            <div class="filter-container fade-in">
+                <div class="filter-row">
+                    <span class="filter-label">
+                        <i class="fas fa-filter"></i> Filter by Status:
+                    </span>
+                    <select
+                        id="status-filter"
+                        class="form-control"
+                        style="width: auto"
+                        onchange="filterBins()"
+                    >
+                        <option value="">All Bins</option>
+                        <option value="Empty">Empty 🟢</option>
+                        <option value="Half-Full">Half-Full 🟡</option>
+                        <option value="Full">Full 🔴</option>
+                    </select>
+                    <button
+                        class="btn btn-secondary btn-small"
+                        onclick="refreshBins()"
+                    >
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button
+                        class="btn btn-primary btn-small"
+                        onclick="centerOnUser()"
+                    >
+                        <i class="fas fa-crosshairs"></i> My Location
+                    </button>
+                </div>
             </div>
-        </div>
 
-        <!-- Map Container -->
-        <div class="card card-full fade-in">
-            <div class="card-body" style="padding: 0;">
-                <div id="map-container" class="map-container map-fullscreen">
-                    <div class="map-loading">
-                        <div>
-                            <i class="fas fa-map-marker-alt" style="font-size: 3rem; color: #27ae60; margin-bottom: 1rem;"></i>
-                            <p>Loading map and detecting your location...</p>
-                            <div class="loading-spinner"></div>
+            <!-- Map Container -->
+            <div class="card card-full fade-in">
+                <div class="card-body" style="padding: 0">
+                    <div
+                        id="map-container"
+                        class="map-container map-fullscreen"
+                    >
+                        <div class="map-loading">
+                            <div>
+                                <i
+                                    class="fas fa-map-marker-alt"
+                                    style="
+                                        font-size: 3rem;
+                                        color: #27ae60;
+                                        margin-bottom: 1rem;
+                                    "
+                                ></i>
+                                <p>
+                                    Loading map and detecting your location...
+                                </p>
+                                <div class="loading-spinner"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Map Legend -->
-        <div class="card fade-in">
-            <div class="card-header">
-                <h3><i class="fas fa-info-circle"></i> Map Legend</h3>
-            </div>
-            <div class="card-body">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <div class="flex" style="align-items: center; gap: 0.5rem;">
-                        <div style="width: 20px; height: 20px; background: #007bff; border-radius: 50%; border: 3px solid white;"></div>
-                        <span>Your Location</span>
+            <!-- Map Legend -->
+            <div class="card fade-in">
+                <div class="card-header">
+                    <h3><i class="fas fa-info-circle"></i> Map Legend</h3>
+                </div>
+                <div class="card-body">
+                    <div
+                        style="
+                            display: grid;
+                            grid-template-columns: repeat(
+                                auto-fit,
+                                minmax(200px, 1fr)
+                            );
+                            gap: 1rem;
+                        "
+                    >
+                        <div
+                            class="flex"
+                            style="align-items: center; gap: 0.5rem"
+                        >
+                            <div
+                                style="
+                                    width: 20px;
+                                    height: 20px;
+                                    background: #007bff;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                "
+                            ></div>
+                            <span>Your Location</span>
+                        </div>
+                        <div
+                            class="flex"
+                            style="align-items: center; gap: 0.5rem"
+                        >
+                            <div
+                                style="
+                                    width: 25px;
+                                    height: 25px;
+                                    background: #27ae60;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 12px;
+                                "
+                            >
+                                🟢
+                            </div>
+                            <span>Empty Bin</span>
+                        </div>
+                        <div
+                            class="flex"
+                            style="align-items: center; gap: 0.5rem"
+                        >
+                            <div
+                                style="
+                                    width: 25px;
+                                    height: 25px;
+                                    background: #f39c12;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 12px;
+                                "
+                            >
+                                🟡
+                            </div>
+                            <span>Half-Full Bin</span>
+                        </div>
+                        <div
+                            class="flex"
+                            style="align-items: center; gap: 0.5rem"
+                        >
+                            <div
+                                style="
+                                    width: 25px;
+                                    height: 25px;
+                                    background: #e74c3c;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 12px;
+                                "
+                            >
+                                🔴
+                            </div>
+                            <span>Full Bin</span>
+                        </div>
                     </div>
-                    <div class="flex" style="align-items: center; gap: 0.5rem;">
-                        <div style="width: 25px; height: 25px; background: #27ae60; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-size: 12px;">🟢</div>
-                        <span>Empty Bin</span>
-                    </div>
-                    <div class="flex" style="align-items: center; gap: 0.5rem;">
-                        <div style="width: 25px; height: 25px; background: #f39c12; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-size: 12px;">🟡</div>
-                        <span>Half-Full Bin</span>
-                    </div>
-                    <div class="flex" style="align-items: center; gap: 0.5rem;">
-                        <div style="width: 25px; height: 25px; background: #e74c3c; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-size: 12px;">🔴</div>
-                        <span>Full Bin</span>
+                    <div
+                        style="
+                            margin-top: 1rem;
+                            padding-top: 1rem;
+                            border-top: 1px solid #eee;
+                        "
+                    >
+                        <p style="margin: 0; color: #666; font-size: 0.9rem">
+                            <i
+                                class="fas fa-lightbulb"
+                                style="color: #f39c12"
+                            ></i>
+                            <strong>Tip:</strong> Click on any bin marker to see
+                            details and get navigation directions.
+                        </p>
                     </div>
                 </div>
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                    <p style="margin: 0; color: #666; font-size: 0.9rem;">
-                        <i class="fas fa-lightbulb" style="color: #f39c12;"></i>
-                        <strong>Tip:</strong> Click on any bin marker to see details and get navigation directions.
-                    </p>
+            </div>
+
+            <!-- Statistics Section -->
+            <div class="card fade-in">
+                <div class="card-header">
+                    <h3>
+                        <i class="fas fa-chart-pie"></i> Nearby Bins Summary
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <span id="visible-total" class="stat-number"
+                                >0</span
+                            >
+                            <div class="stat-label">Total Visible</div>
+                        </div>
+                        <div class="stat-card">
+                            <span id="visible-empty" class="stat-number"
+                                >0</span
+                            >
+                            <div class="stat-label">Empty</div>
+                        </div>
+                        <div class="stat-card">
+                            <span id="visible-half-full" class="stat-number"
+                                >0</span
+                            >
+                            <div class="stat-label">Half-Full</div>
+                        </div>
+                        <div class="stat-card">
+                            <span id="visible-full" class="stat-number">0</span>
+                            <div class="stat-label">Full</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card text-center fade-in">
+                <div class="card-body">
+                    <h3 style="color: #27ae60; margin-bottom: 1rem">
+                        Quick Actions
+                    </h3>
+                    <div
+                        style="
+                            display: flex;
+                            gap: 1rem;
+                            justify-content: center;
+                            flex-wrap: wrap;
+                        "
+                    >
+                        <a href="add.html" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Add New Bin
+                        </a>
+                        <button class="btn btn-primary" onclick="refreshBins()">
+                            <i class="fas fa-sync-alt"></i> Refresh Map
+                        </button>
+                        <button
+                            class="btn btn-secondary"
+                            onclick="shareLocation()"
+                        >
+                            <i class="fas fa-share"></i> Share Location
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Statistics Section -->
-        <div class="card fade-in">
-            <div class="card-header">
-                <h3><i class="fas fa-chart-pie"></i> Nearby Bins Summary</h3>
+        <!-- Floating Action Button -->
+        <button
+            class="fab"
+            onclick="window.location.href='add.html'"
+            title="Add New Bin"
+        >
+            <i class="fas fa-plus"></i>
+        </button>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>
+                    &copy; 2024 Smart Waste Management System. Making
+                    communities cleaner, one bin at a time.
+                </p>
             </div>
-            <div class="card-body">
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <span id="visible-total" class="stat-number">0</span>
-                        <div class="stat-label">Total Visible</div>
-                    </div>
-                    <div class="stat-card">
-                        <span id="visible-empty" class="stat-number">0</span>
-                        <div class="stat-label">Empty</div>
-                    </div>
-                    <div class="stat-card">
-                        <span id="visible-half-full" class="stat-number">0</span>
-                        <div class="stat-label">Half-Full</div>
-                    </div>
-                    <div class="stat-card">
-                        <span id="visible-full" class="stat-number">0</span>
-                        <div class="stat-label">Full</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </footer>
 
-        <!-- Quick Actions -->
-        <div class="card text-center fade-in">
-            <div class="card-body">
-                <h3 style="color: #27ae60; margin-bottom: 1rem;">Quick Actions</h3>
-                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <a href="add.html" class="btn btn-success">
-                        <i class="fas fa-plus"></i> Add New Bin
-                    </a>
-                    <button class="btn btn-primary" onclick="refreshBins()">
-                        <i class="fas fa-sync-alt"></i> Refresh Map
-                    </button>
-                    <button class="btn btn-secondary" onclick="shareLocation()">
-                        <i class="fas fa-share"></i> Share Location
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+        <!-- Scripts -->
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="script.js"></script>
 
-    <!-- Floating Action Button -->
-    <button class="fab" onclick="window.location.href='add.html'" title="Add New Bin">
-        <i class="fas fa-plus"></i>
-    </button>
+        <!-- Initialize functions immediately -->
+        <script>
+            // Global variables
+            let allBins = [];
+            let filteredBins = [];
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2024 Smart Waste Management System. Making communities cleaner, one bin at a time.</p>
-        </div>
-    </footer>
+            // Make functions available globally immediately
+            window.allBins = [];
+            window.filteredBins = [];
 
-    <!-- Scripts -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="script.js"></script>
-
-    <!-- Initialize functions immediately -->
-    <script>
-        // Global variables
-        let allBins = [];
-        let filteredBins = [];
-
-        // Make functions available globally immediately
-        window.allBins = [];
-        window.filteredBins = [];
-
-        // Simple alert function
-        function showAlert(message, type) {
-            console.log(`${type.toUpperCase()}: ${message}`);
-            const alertDiv = document.createElement('div');
-            alertDiv.textContent = message;
-            alertDiv.style.cssText = `
+            // Simple alert function
+            function showAlert(message, type) {
+                console.log(`${type.toUpperCase()}: ${message}`);
+                const alertDiv = document.createElement("div");
+                alertDiv.textContent = message;
+                alertDiv.style.cssText = `
                 position: fixed;
                 top: 80px;
                 right: 20px;
@@ -315,270 +494,301 @@
                 cursor: pointer;
             `;
 
-            if (type === 'success') {
-                alertDiv.style.backgroundColor = '#d5f4e6';
-                alertDiv.style.color = '#1e7e34';
-                alertDiv.style.border = '1px solid #27ae60';
-            } else if (type === 'error') {
-                alertDiv.style.backgroundColor = '#fadbd8';
-                alertDiv.style.color = '#721c24';
-                alertDiv.style.border = '1px solid #e74c3c';
-            } else if (type === 'warning') {
-                alertDiv.style.backgroundColor = '#fef5e7';
-                alertDiv.style.color = '#856404';
-                alertDiv.style.border = '1px solid #f39c12';
-            } else {
-                alertDiv.style.backgroundColor = '#d6eaf8';
-                alertDiv.style.color = '#0c5460';
-                alertDiv.style.border = '1px solid #3498db';
-            }
-
-            alertDiv.onclick = () => alertDiv.remove();
-            document.body.appendChild(alertDiv);
-            setTimeout(() => {
-                if (alertDiv.parentNode) alertDiv.remove();
-            }, 5000);
-        }
-
-        // Filter bins by status
-        function filterBins() {
-            console.log('Filter bins called');
-            const statusFilter = document.getElementById('status-filter');
-            if (!statusFilter) {
-                console.error('Status filter not found');
-                return;
-            }
-
-            const filterValue = statusFilter.value;
-            console.log('Filtering by:', filterValue);
-
-            if (filterValue === '') {
-                window.filteredBins = window.allBins;
-            } else {
-                window.filteredBins = window.allBins.filter(bin => bin.status === filterValue);
-            }
-
-            updateVisibleStats(window.filteredBins);
-
-            // Update map if available
-            if (window.map && window.smartWasteApp?.addBinMarkers) {
-                window.smartWasteApp.addBinMarkers(window.filteredBins);
-            }
-
-            showAlert(`Showing ${window.filteredBins.length} bins`, 'info');
-        }
-
-        // Refresh bins data
-        async function refreshBins() {
-            console.log('Refresh bins called');
-            showAlert('Refreshing bins data...', 'info');
-
-            try {
-                const response = await fetch('http://localhost:5000/api/bins');
-                if (response.ok) {
-                    const data = await response.json();
-                    window.allBins = data.data || [];
-                    window.filteredBins = window.allBins;
-                    updateVisibleStats(window.allBins);
-
-                    // Update map if available
-                    if (window.map && window.smartWasteApp?.addBinMarkers) {
-                        window.smartWasteApp.addBinMarkers(window.allBins);
-                    }
-
-                    showAlert(`Refreshed! Found ${window.allBins.length} bins`, 'success');
+                if (type === "success") {
+                    alertDiv.style.backgroundColor = "#d5f4e6";
+                    alertDiv.style.color = "#1e7e34";
+                    alertDiv.style.border = "1px solid #27ae60";
+                } else if (type === "error") {
+                    alertDiv.style.backgroundColor = "#fadbd8";
+                    alertDiv.style.color = "#721c24";
+                    alertDiv.style.border = "1px solid #e74c3c";
+                } else if (type === "warning") {
+                    alertDiv.style.backgroundColor = "#fef5e7";
+                    alertDiv.style.color = "#856404";
+                    alertDiv.style.border = "1px solid #f39c12";
                 } else {
-                    throw new Error('API not available');
+                    alertDiv.style.backgroundColor = "#d6eaf8";
+                    alertDiv.style.color = "#0c5460";
+                    alertDiv.style.border = "1px solid #3498db";
                 }
-            } catch (error) {
-                console.error('Error refreshing:', error);
-                showAlert('Could not refresh data. Server may be offline.', 'error');
-            }
-        }
 
-        // Center map on user location
-        function centerOnUser() {
-            console.log('Center on user called');
-
-            if (!navigator.geolocation) {
-                showAlert('Geolocation not supported by your browser', 'error');
-                return;
+                alertDiv.onclick = () => alertDiv.remove();
+                document.body.appendChild(alertDiv);
+                setTimeout(() => {
+                    if (alertDiv.parentNode) alertDiv.remove();
+                }, 5000);
             }
 
-            showAlert('Getting your location...', 'info');
+            // Filter bins by status
+            function filterBins() {
+                console.log("Filter bins called");
+                const statusFilter = document.getElementById("status-filter");
+                if (!statusFilter) {
+                    console.error("Status filter not found");
+                    return;
+                }
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
+                const filterValue = statusFilter.value;
+                console.log("Filtering by:", filterValue);
 
-                    if (window.map) {
-                        window.map.setView([lat, lng], 15);
-                        showAlert('Centered on your location!', 'success');
+                if (filterValue === "") {
+                    window.filteredBins = window.allBins;
+                } else {
+                    window.filteredBins = window.allBins.filter(
+                        (bin) => bin.status === filterValue,
+                    );
+                }
+
+                updateVisibleStats(window.filteredBins);
+
+                // Update map if available
+                if (window.map && window.smartWasteApp?.addBinMarkers) {
+                    window.smartWasteApp.addBinMarkers(window.filteredBins);
+                }
+
+                showAlert(`Showing ${window.filteredBins.length} bins`, "info");
+            }
+
+            // Refresh bins data
+            async function refreshBins() {
+                console.log("Refresh bins called");
+                showAlert("Refreshing bins data...", "info");
+
+                try {
+                    const response = await fetch(CONFIG.API_BASE_URL + "/bins");
+                    if (response.ok) {
+                        const data = await response.json();
+                        window.allBins = data.data || [];
+                        window.filteredBins = window.allBins;
+                        updateVisibleStats(window.allBins);
+
+                        // Update map if available
+                        if (window.map && window.smartWasteApp?.addBinMarkers) {
+                            window.smartWasteApp.addBinMarkers(window.allBins);
+                        }
+
+                        showAlert(
+                            `Refreshed! Found ${window.allBins.length} bins`,
+                            "success",
+                        );
                     } else {
-                        showAlert('Map not ready yet', 'warning');
+                        throw new Error("API not available");
                     }
-                },
-                (error) => {
-                    let message = 'Location error: ';
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            message += 'Permission denied. Please allow location access.';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            message += 'Position unavailable. Check your connection.';
-                            break;
-                        case error.TIMEOUT:
-                            message += 'Request timeout. Please try again.';
-                            break;
-                        default:
-                            message += 'Unknown error occurred.';
-                    }
-                    showAlert(message, 'error');
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 300000
+                } catch (error) {
+                    console.error("Error refreshing:", error);
+                    showAlert(
+                        "Could not refresh data. Server may be offline.",
+                        "error",
+                    );
                 }
-            );
-        }
-
-        // Share location
-        function shareLocation() {
-            const currentUrl = window.location.href;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(currentUrl).then(() => {
-                    showAlert('Page URL copied to clipboard!', 'success');
-                }).catch(() => {
-                    showAlert(`Share this URL: ${currentUrl}`, 'info');
-                });
-            } else {
-                showAlert(`Share this URL: ${currentUrl}`, 'info');
             }
-        }
 
-        // Update statistics
-        function updateVisibleStats(bins) {
-            if (!bins) bins = [];
+            // Center map on user location
+            function centerOnUser() {
+                console.log("Center on user called");
 
-            const stats = {
-                total: bins.length,
-                empty: bins.filter(bin => bin.status === 'Empty').length,
-                halfFull: bins.filter(bin => bin.status === 'Half-Full').length,
-                full: bins.filter(bin => bin.status === 'Full').length
-            };
-
-            // Update all stat elements
-            const statMap = {
-                'visible-total': stats.total,
-                'visible-empty': stats.empty,
-                'visible-half-full': stats.halfFull,
-                'visible-full': stats.full,
-                'total-bins': stats.total,
-                'empty-bins': stats.empty,
-                'half-full-bins': stats.halfFull,
-                'full-bins': stats.full
-            };
-
-            Object.entries(statMap).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = value;
+                if (!navigator.geolocation) {
+                    showAlert(
+                        "Geolocation not supported by your browser",
+                        "error",
+                    );
+                    return;
                 }
-            });
 
-            console.log('Stats updated:', stats);
-        }
+                showAlert("Getting your location...", "info");
 
-        // Initialize page data
-        async function loadInitialData() {
-            try {
-                console.log('Loading initial data...');
-                const response = await fetch('http://localhost:5000/api/bins');
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
 
-                if (response.ok) {
-                    const data = await response.json();
-                    window.allBins = data.data || [];
-                    window.filteredBins = window.allBins;
-                    updateVisibleStats(window.allBins);
-                    console.log(`Loaded ${window.allBins.length} bins`);
-                    showAlert(`Loaded ${window.allBins.length} bins from server`, 'success');
+                        if (window.map) {
+                            window.map.setView([lat, lng], 15);
+                            showAlert("Centered on your location!", "success");
+                        } else {
+                            showAlert("Map not ready yet", "warning");
+                        }
+                    },
+                    (error) => {
+                        let message = "Location error: ";
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                message +=
+                                    "Permission denied. Please allow location access.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                message +=
+                                    "Position unavailable. Check your connection.";
+                                break;
+                            case error.TIMEOUT:
+                                message += "Request timeout. Please try again.";
+                                break;
+                            default:
+                                message += "Unknown error occurred.";
+                        }
+                        showAlert(message, "error");
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 300000,
+                    },
+                );
+            }
+
+            // Share location
+            function shareLocation() {
+                const currentUrl = window.location.href;
+                if (navigator.clipboard) {
+                    navigator.clipboard
+                        .writeText(currentUrl)
+                        .then(() => {
+                            showAlert(
+                                "Page URL copied to clipboard!",
+                                "success",
+                            );
+                        })
+                        .catch(() => {
+                            showAlert(`Share this URL: ${currentUrl}`, "info");
+                        });
                 } else {
-                    console.log('Server not available');
+                    showAlert(`Share this URL: ${currentUrl}`, "info");
+                }
+            }
+
+            // Update statistics
+            function updateVisibleStats(bins) {
+                if (!bins) bins = [];
+
+                const stats = {
+                    total: bins.length,
+                    empty: bins.filter((bin) => bin.status === "Empty").length,
+                    halfFull: bins.filter((bin) => bin.status === "Half-Full")
+                        .length,
+                    full: bins.filter((bin) => bin.status === "Full").length,
+                };
+
+                // Update all stat elements
+                const statMap = {
+                    "visible-total": stats.total,
+                    "visible-empty": stats.empty,
+                    "visible-half-full": stats.halfFull,
+                    "visible-full": stats.full,
+                    "total-bins": stats.total,
+                    "empty-bins": stats.empty,
+                    "half-full-bins": stats.halfFull,
+                    "full-bins": stats.full,
+                };
+
+                Object.entries(statMap).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                    }
+                });
+
+                console.log("Stats updated:", stats);
+            }
+
+            // Initialize page data
+            async function loadInitialData() {
+                try {
+                    console.log("Loading initial data...");
+                    const response = await fetch(CONFIG.API_BASE_URL + "/bins");
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        window.allBins = data.data || [];
+                        window.filteredBins = window.allBins;
+                        updateVisibleStats(window.allBins);
+                        console.log(`Loaded ${window.allBins.length} bins`);
+                        showAlert(
+                            `Loaded ${window.allBins.length} bins from server`,
+                            "success",
+                        );
+                    } else {
+                        console.log("Server not available");
+                        window.allBins = [];
+                        window.filteredBins = [];
+                        updateVisibleStats([]);
+                        showAlert(
+                            "Server not available. Some features may be limited.",
+                            "warning",
+                        );
+                    }
+                } catch (error) {
+                    console.error("Error loading data:", error);
                     window.allBins = [];
                     window.filteredBins = [];
                     updateVisibleStats([]);
-                    showAlert('Server not available. Some features may be limited.', 'warning');
-                }
-            } catch (error) {
-                console.error('Error loading data:', error);
-                window.allBins = [];
-                window.filteredBins = [];
-                updateVisibleStats([]);
-                showAlert('Could not load data. Please refresh the page.', 'error');
-            }
-        }
-
-        // Make functions globally available immediately
-        window.filterBins = filterBins;
-        window.refreshBins = refreshBins;
-        window.centerOnUser = centerOnUser;
-        window.shareLocation = shareLocation;
-        window.showAlert = showAlert;
-        window.updateVisibleStats = updateVisibleStats;
-
-        // Load data when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadInitialData);
-        } else {
-            loadInitialData();
-        }
-
-        console.log('Find page functions loaded and ready!');
-    </script>
-
-    <!-- Page-specific JavaScript -->
-    <script>
-        // Additional initialization after main script loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Find page DOM fully loaded');
-
-            // Check for shared location in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const sharedLat = urlParams.get('lat');
-            const sharedLng = urlParams.get('lng');
-
-            if (sharedLat && sharedLng) {
-                const lat = parseFloat(sharedLat);
-                const lng = parseFloat(sharedLng);
-
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    console.log('Shared location found:', lat, lng);
-
-                    // Center map on shared location after a delay
-                    setTimeout(() => {
-                        if (window.map) {
-                            window.map.setView([lat, lng], 15);
-                            showAlert('Showing shared location!', 'info');
-                        }
-                    }, 3000);
+                    showAlert(
+                        "Could not load data. Please refresh the page.",
+                        "error",
+                    );
                 }
             }
 
-            // Sync with main app when it loads
-            setTimeout(() => {
-                if (window.smartWasteApp?.updateStatistics) {
-                    const original = window.smartWasteApp.updateStatistics;
-                    window.smartWasteApp.updateStatistics = function(bins) {
-                        original(bins);
-                        window.allBins = bins;
-                        window.filteredBins = bins;
-                        updateVisibleStats(bins);
-                    };
+            // Make functions globally available immediately
+            window.filterBins = filterBins;
+            window.refreshBins = refreshBins;
+            window.centerOnUser = centerOnUser;
+            window.shareLocation = shareLocation;
+            window.showAlert = showAlert;
+            window.updateVisibleStats = updateVisibleStats;
+
+            // Load data when DOM is ready
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", loadInitialData);
+            } else {
+                loadInitialData();
+            }
+
+            console.log("Find page functions loaded and ready!");
+        </script>
+
+        <!-- Page-specific JavaScript -->
+        <script>
+            // Additional initialization after main script loads
+            document.addEventListener("DOMContentLoaded", function () {
+                console.log("Find page DOM fully loaded");
+
+                // Check for shared location in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const sharedLat = urlParams.get("lat");
+                const sharedLng = urlParams.get("lng");
+
+                if (sharedLat && sharedLng) {
+                    const lat = parseFloat(sharedLat);
+                    const lng = parseFloat(sharedLng);
+
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        console.log("Shared location found:", lat, lng);
+
+                        // Center map on shared location after a delay
+                        setTimeout(() => {
+                            if (window.map) {
+                                window.map.setView([lat, lng], 15);
+                                showAlert("Showing shared location!", "info");
+                            }
+                        }, 3000);
+                    }
                 }
-            }, 2000);
-        });
-    </script>
-</body>
+
+                // Sync with main app when it loads
+                setTimeout(() => {
+                    if (window.smartWasteApp?.updateStatistics) {
+                        const original = window.smartWasteApp.updateStatistics;
+                        window.smartWasteApp.updateStatistics = function (
+                            bins,
+                        ) {
+                            original(bins);
+                            window.allBins = bins;
+                            window.filteredBins = bins;
+                            updateVisibleStats(bins);
+                        };
+                    }
+                }, 2000);
+            });
+        </script>
+    </body>
 </html>
