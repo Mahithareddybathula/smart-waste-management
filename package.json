@@ -19,6 +19,7 @@
     "railway:check": "node deploy-railway.js check",
     "railway:logs": "node deploy-railway.js logs",
     "railway:env": "node deploy-railway.js env",
+    "test:db": "node test-db-connection.js",
     "postinstall": "echo 'Installation complete'",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf node_modules package-lock.json && npm install"
