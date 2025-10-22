@@ -361,9 +361,10 @@
             document.addEventListener("DOMContentLoaded", async function () {
                 try {
                     // Load bins data to show statistics
-                    const response = await fetch(
-                        "http://localhost:5000/api/bins",
-                    );
+                    const apiUrl = window.CONFIG
+                        ? CONFIG.API_BASE_URL + "/bins"
+                        : "https://smart-waste-management-production.up.railway.app/api/bins";
+                    const response = await fetch(apiUrl);
                     if (response.ok) {
                         const data = await response.json();
                         const bins = data.data || [];

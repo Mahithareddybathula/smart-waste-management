@@ -599,6 +599,69 @@
                 }
             }
 
+            // Force map initialization on find page
+            function initializeMapImmediately() {
+                console.log("🗺️ Force initializing map on find page...");
+
+                // Wait for both Leaflet and CONFIG to be ready
+                function waitForDependencies(callback) {
+                    if (
+                        typeof L !== "undefined" &&
+                        typeof CONFIG !== "undefined"
+                    ) {
+                        console.log("✅ Dependencies ready, creating map...");
+                        callback();
+                    } else {
+                        console.log("⏳ Waiting for dependencies...");
+                        setTimeout(() => waitForDependencies(callback), 100);
+                    }
+                }
+
+                waitForDependencies(() => {
+                    try {
+                        const mapContainer =
+                            document.getElementById("map-container");
+                        if (mapContainer && !window.map) {
+                            // Clear loading screen
+                            mapContainer.innerHTML = "";
+
+                            // Create map
+                            window.map = L.map("map-container", {
+                                center: [40.7128, -74.006], // Default center
+                                zoom: 13,
+                                zoomControl: true,
+                                attributionControl: true,
+                            });
+
+                            // Add tiles
+                            L.tileLayer(
+                                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                                {
+                                    attribution:
+                                        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                                    maxZoom: 19,
+                                },
+                            ).addTo(window.map);
+
+                            console.log("✅ Map force-created successfully!");
+
+                            // Load bins after map is ready
+                            if (typeof loadInitialData === "function") {
+                                loadInitialData();
+                            }
+                        }
+                    } catch (error) {
+                        console.error("❌ Force map creation failed:", error);
+                    }
+                });
+            }
+
+            // Initialize map immediately when page loads
+            document.addEventListener("DOMContentLoaded", function () {
+                console.log("🚀 Find page DOM loaded, initializing map...");
+                setTimeout(initializeMapImmediately, 500);
+            });
+
             // Global variables - avoid redeclaration
             if (typeof window.allBins === "undefined") {
                 window.allBins = [];
