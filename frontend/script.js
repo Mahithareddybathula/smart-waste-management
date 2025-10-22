@@ -846,7 +846,17 @@ async function initializeFindPage() {
 
   if (mapInstance) {
     window.map = mapInstance;
+    map = mapInstance; // Set local reference too
     console.log("✅ Map instance set to window.map");
+
+    // Make functions globally available for find.html coordination
+    window.addBinMarkersToMap = addBinMarkers;
+    window.addUserLocationToMap = () => {
+      if (userLocation) {
+        addUserLocationMarker(userLocation);
+      }
+    };
+    window.loadBinsOnMap = loadBinsData;
   } else {
     console.error("❌ Map initialization failed");
   }
