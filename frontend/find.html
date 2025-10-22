@@ -131,12 +131,51 @@
                                 console.log("✅ Map is ready!");
                                 callback();
                             } else if (attempts < maxAttempts) {
-                                console.log("⏳ Map not ready, waiting...");
                                 setTimeout(() => waitForMap(callback), 500);
                             } else {
                                 console.error(
                                     "❌ Map failed to initialize after 10 seconds",
                                 );
+                                // Force map creation check
+                                if (typeof L !== "undefined") {
+                                    console.log(
+                                        "🔧 Attempting to force map creation...",
+                                    );
+                                    const mapContainer =
+                                        document.getElementById(
+                                            "map-container",
+                                        );
+                                    if (mapContainer) {
+                                        try {
+                                            window.map = L.map(
+                                                "map-container",
+                                                {
+                                                    center: [
+                                                        position.coords
+                                                            .latitude,
+                                                        position.coords
+                                                            .longitude,
+                                                    ],
+                                                    zoom: 15,
+                                                },
+                                            );
+                                            L.tileLayer(
+                                                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                                            ).addTo(window.map);
+                                            console.log(
+                                                "✅ Emergency map created successfully",
+                                            );
+                                            callback();
+                                            return;
+                                        } catch (e) {
+                                            console.error(
+                                                "❌ Emergency map creation failed:",
+                                                e,
+                                            );
+                                        }
+                                    }
+                                }
+
                                 const alert = document.createElement("div");
                                 alert.textContent =
                                     "Map is not ready. Please refresh the page.";
@@ -865,6 +904,7 @@
                     leafletLoaded: typeof L !== "undefined",
                     configLoaded: typeof CONFIG !== "undefined",
                     apiUrl: window.CONFIG ? CONFIG.API_BASE_URL : "undefined",
+                    mapContainer: !!document.getElementById("map-container"),
                 };
                 console.log("🗺️ Map Debug Status:", status);
                 showAlert(
@@ -872,6 +912,52 @@
                     window.map ? "success" : "warning",
                 );
                 return status;
+            };
+
+            // Force map check and creation if needed
+            window.forceMapCreation = function () {
+                console.log("🔧 Force creating map...");
+                if (typeof L !== "undefined") {
+                    const mapContainer =
+                        document.getElementById("map-container");
+                    if (mapContainer) {
+                        try {
+                            // Clear existing content
+                            mapContainer.innerHTML = "";
+
+                            // Create new map
+                            window.map = L.map("map-container", {
+                                center: [16.3163, 80.425], // Use your detected coordinates
+                                zoom: 13,
+                            });
+
+                            L.tileLayer(
+                                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                                {
+                                    attribution:
+                                        "© OpenStreetMap contributors",
+                                },
+                            ).addTo(window.map);
+
+                            console.log("✅ Force map creation successful");
+                            showAlert("Map created successfully!", "success");
+                            return true;
+                        } catch (e) {
+                            console.error("❌ Force map creation failed:", e);
+                            showAlert(
+                                "Map creation failed: " + e.message,
+                                "error",
+                            );
+                            return false;
+                        }
+                    } else {
+                        console.error("❌ Map container not found");
+                        return false;
+                    }
+                } else {
+                    console.error("❌ Leaflet not loaded");
+                    return false;
+                }
             };
 
             // Make functions globally available immediately
