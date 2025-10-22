@@ -599,67 +599,86 @@
                 }
             }
 
-            // Force map initialization on find page
-            function initializeMapImmediately() {
-                console.log("🗺️ Force initializing map on find page...");
+            // Coordinate with main script initialization
+            function ensureMapInitialization() {
+                console.log("🗺️ Ensuring map initialization...");
 
-                // Wait for both Leaflet and CONFIG to be ready
-                function waitForDependencies(callback) {
+                // Wait for script.js to be loaded and ready
+                function waitForMainScript(callback) {
                     if (
-                        typeof L !== "undefined" &&
-                        typeof CONFIG !== "undefined"
+                        typeof window.smartWasteApp !== "undefined" ||
+                        (typeof L !== "undefined" &&
+                            typeof CONFIG !== "undefined")
                     ) {
-                        console.log("✅ Dependencies ready, creating map...");
+                        console.log("✅ Main script ready, coordinating...");
                         callback();
                     } else {
-                        console.log("⏳ Waiting for dependencies...");
-                        setTimeout(() => waitForDependencies(callback), 100);
+                        console.log("⏳ Waiting for main script...");
+                        setTimeout(() => waitForMainScript(callback), 200);
                     }
                 }
 
-                waitForDependencies(() => {
+                waitForMainScript(() => {
+                    // Check if map already exists from main script
+                    if (window.map && window.map.setView) {
+                        console.log("✅ Map already exists from main script");
+                        // Trigger bin loading and user location
+                        setTimeout(() => {
+                            if (window.loadBinsOnMap) window.loadBinsOnMap();
+                            if (window.addUserLocationToMap)
+                                window.addUserLocationToMap();
+                        }, 1000);
+                        return;
+                    }
+
+                    // Fallback: create map if main script didn't
+                    console.log("🔄 Creating fallback map...");
                     try {
                         const mapContainer =
                             document.getElementById("map-container");
-                        if (mapContainer && !window.map) {
-                            // Clear loading screen
+                        if (mapContainer) {
                             mapContainer.innerHTML = "";
 
-                            // Create map
                             window.map = L.map("map-container", {
-                                center: [40.7128, -74.006], // Default center
+                                center: [16.3163, 80.4247], // Your location
                                 zoom: 13,
                                 zoomControl: true,
                                 attributionControl: true,
                             });
 
-                            // Add tiles
                             L.tileLayer(
                                 "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                                 {
                                     attribution:
-                                        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                                        "© OpenStreetMap contributors",
                                     maxZoom: 19,
                                 },
                             ).addTo(window.map);
 
-                            console.log("✅ Map force-created successfully!");
+                            console.log("✅ Fallback map created");
 
-                            // Load bins after map is ready
-                            if (typeof loadInitialData === "function") {
-                                loadInitialData();
-                            }
+                            // Load data after map creation
+                            setTimeout(() => {
+                                if (typeof loadInitialData === "function") {
+                                    loadInitialData();
+                                }
+                            }, 500);
                         }
                     } catch (error) {
-                        console.error("❌ Force map creation failed:", error);
+                        console.error(
+                            "❌ Fallback map creation failed:",
+                            error,
+                        );
                     }
                 });
             }
 
-            // Initialize map immediately when page loads
+            // Initialize after DOM and scripts are ready
             document.addEventListener("DOMContentLoaded", function () {
-                console.log("🚀 Find page DOM loaded, initializing map...");
-                setTimeout(initializeMapImmediately, 500);
+                console.log(
+                    "🚀 Find page DOM loaded, coordinating initialization...",
+                );
+                setTimeout(ensureMapInitialization, 1000);
             });
 
             // Global variables - avoid redeclaration
@@ -786,9 +805,9 @@
                 }
             }
 
-            // Center map on user location
+            // Enhanced center on user with marker
             function centerOnUser() {
-                console.log("Center on user called");
+                console.log("📍 Center on user called with marker support");
 
                 if (!navigator.geolocation) {
                     showAlert(
@@ -804,7 +823,7 @@
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-                        console.log("Location for centering:", lat, lng);
+                        console.log("Location obtained:", lat, lng);
 
                         // Wait for map to be ready
                         function waitForMapReady(callback) {
@@ -820,9 +839,36 @@
                         }
 
                         waitForMapReady(() => {
+                            // Center map
                             window.map.setView([lat, lng], 15);
-                            console.log("Map centered successfully");
-                            showAlert("Centered on your location!", "success");
+                            console.log("Map centered on location");
+
+                            // Remove existing user marker
+                            if (window.userLocationMarker) {
+                                window.map.removeLayer(
+                                    window.userLocationMarker,
+                                );
+                            }
+
+                            // Add user location marker
+                            window.userLocationMarker = L.marker([lat, lng], {
+                                icon: L.divIcon({
+                                    className: "user-location-marker",
+                                    html: '<div style="background: #007bff; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                                    iconSize: [20, 20],
+                                    iconAnchor: [10, 10],
+                                }),
+                            }).addTo(window.map);
+
+                            window.userLocationMarker.bindPopup(
+                                "📍 Your Location",
+                            );
+
+                            showAlert(
+                                "Centered on your location! 📍",
+                                "success",
+                            );
+                            console.log("✅ User location marker added");
                         });
                     },
                     (error) => {
@@ -846,7 +892,7 @@
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 10000,
+                        timeout: 15000,
                         maximumAge: 300000,
                     },
                 );
@@ -906,10 +952,10 @@
                 console.log("Stats updated:", stats);
             }
 
-            // Initialize page data
+            // Enhanced data loading with marker display
             async function loadInitialData() {
                 try {
-                    console.log("Loading initial data...");
+                    console.log("🔄 Loading initial data and markers...");
 
                     // Wait for CONFIG if not available
                     if (typeof CONFIG === "undefined") {
@@ -926,7 +972,11 @@
                         window.allBins = data.data || [];
                         window.filteredBins = window.allBins;
                         updateVisibleStats(window.allBins);
-                        console.log(`Loaded ${window.allBins.length} bins`);
+
+                        // Add bin markers to map
+                        addBinMarkersToMap(window.allBins);
+
+                        console.log(`✅ Loaded ${window.allBins.length} bins`);
                         showAlert(
                             `Loaded ${window.allBins.length} bins from server`,
                             "success",
@@ -951,6 +1001,105 @@
                         "error",
                     );
                 }
+            }
+
+            // Add bin markers with proper colors and popups
+            function addBinMarkersToMap(bins) {
+                console.log(`🗺️ Adding ${bins.length} bin markers to map...`);
+
+                if (!window.map) {
+                    console.warn("Map not available for markers");
+                    return;
+                }
+
+                // Clear existing bin markers
+                if (window.binMarkers) {
+                    window.binMarkers.forEach((marker) =>
+                        window.map.removeLayer(marker),
+                    );
+                }
+                window.binMarkers = [];
+
+                bins.forEach((bin, index) => {
+                    try {
+                        const lat = parseFloat(
+                            bin.location?.latitude || bin.latitude,
+                        );
+                        const lng = parseFloat(
+                            bin.location?.longitude || bin.longitude,
+                        );
+
+                        if (isNaN(lat) || isNaN(lng)) {
+                            console.warn(
+                                `Invalid coordinates for bin ${index}:`,
+                                bin,
+                            );
+                            return;
+                        }
+
+                        // Color based on status
+                        let color = "#6c757d"; // gray default
+                        let statusText = bin.status || "Unknown";
+                        let emoji = "🗑️";
+
+                        switch (bin.status) {
+                            case "Empty":
+                                color = "#28a745"; // green
+                                emoji = "🟢";
+                                break;
+                            case "Half-Full":
+                                color = "#ffc107"; // yellow
+                                emoji = "🟡";
+                                break;
+                            case "Full":
+                                color = "#dc3545"; // red
+                                emoji = "🔴";
+                                break;
+                        }
+
+                        const marker = L.marker([lat, lng], {
+                            icon: L.divIcon({
+                                className: "bin-marker",
+                                html: `<div style="
+                                    background: ${color};
+                                    width: 25px;
+                                    height: 25px;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 12px;
+                                ">${emoji}</div>`,
+                                iconSize: [25, 25],
+                                iconAnchor: [12, 12],
+                            }),
+                        }).addTo(window.map);
+
+                        // Add popup with bin details
+                        const popupContent = `
+                            <div style="text-align: center;">
+                                <h6>${bin.name || "Waste Bin"}</h6>
+                                <p><strong>Status:</strong> ${emoji} ${statusText}</p>
+                                <p><strong>Type:</strong> ${bin.type || "General"}</p>
+                                <p><strong>Location:</strong> ${bin.location?.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}</p>
+                                <button onclick="window.open('https://maps.google.com?q=${lat},${lng}', '_blank')"
+                                        class="btn btn-sm btn-primary">📍 Get Directions</button>
+                            </div>
+                        `;
+                        marker.bindPopup(popupContent);
+
+                        window.binMarkers.push(marker);
+                    } catch (error) {
+                        console.error(
+                            `Error creating marker for bin ${index}:`,
+                            error,
+                        );
+                    }
+                });
+
+                console.log(`✅ Added ${window.binMarkers.length} bin markers`);
             }
 
             // Add debugging function for map issues
