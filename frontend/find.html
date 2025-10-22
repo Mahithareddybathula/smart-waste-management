@@ -78,7 +78,13 @@
             };
 
             window.centerOnUser = function () {
-                console.log("Center on user clicked - immediate function");
+                console.log("🎯 Center on user clicked - immediate function");
+
+                // Debug map status first
+                if (window.debugMapStatus) {
+                    window.debugMapStatus();
+                }
+
                 if (!navigator.geolocation) {
                     const alert = document.createElement("div");
                     alert.textContent = "Geolocation not supported";
@@ -96,25 +102,87 @@
                     "position:fixed;top:80px;right:20px;background:#d6eaf8;color:#0c5460;padding:10px 20px;border-radius:8px;z-index:10000;";
                 document.body.appendChild(loadingAlert);
 
+                console.log("📍 Starting geolocation request...");
+
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         loadingAlert.remove();
-                        if (window.map) {
-                            window.map.setView(
-                                [
-                                    position.coords.latitude,
-                                    position.coords.longitude,
-                                ],
-                                15,
+                        console.log("✅ Location obtained:", {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                        });
+
+                        // Wait for map to be ready with timeout
+                        let attempts = 0;
+                        const maxAttempts = 20; // 10 seconds max
+
+                        function waitForMap(callback) {
+                            attempts++;
+                            console.log(
+                                `🗺️ Checking map readiness (attempt ${attempts}/${maxAttempts})`,
                             );
-                            const alert = document.createElement("div");
-                            alert.textContent = "Centered on your location!";
-                            alert.style.cssText =
-                                "position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
-                            alert.onclick = () => alert.remove();
-                            document.body.appendChild(alert);
-                            setTimeout(() => alert.remove(), 3000);
+
+                            if (
+                                window.map &&
+                                window.map.setView &&
+                                typeof window.map.setView === "function"
+                            ) {
+                                console.log("✅ Map is ready!");
+                                callback();
+                            } else if (attempts < maxAttempts) {
+                                console.log("⏳ Map not ready, waiting...");
+                                setTimeout(() => waitForMap(callback), 500);
+                            } else {
+                                console.error(
+                                    "❌ Map failed to initialize after 10 seconds",
+                                );
+                                const alert = document.createElement("div");
+                                alert.textContent =
+                                    "Map is not ready. Please refresh the page.";
+                                alert.style.cssText =
+                                    "position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                                alert.onclick = () => alert.remove();
+                                document.body.appendChild(alert);
+                                setTimeout(() => alert.remove(), 5000);
+                            }
                         }
+
+                        waitForMap(() => {
+                            try {
+                                console.log("🎯 Setting map view...");
+                                window.map.setView(
+                                    [
+                                        position.coords.latitude,
+                                        position.coords.longitude,
+                                    ],
+                                    15,
+                                );
+                                console.log("✅ Map centered successfully!");
+
+                                const alert = document.createElement("div");
+                                alert.textContent =
+                                    "Centered on your location! 📍";
+                                alert.style.cssText =
+                                    "position:fixed;top:80px;right:20px;background:#d5f4e6;color:#1e7e34;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                                alert.onclick = () => alert.remove();
+                                document.body.appendChild(alert);
+                                setTimeout(() => alert.remove(), 3000);
+                            } catch (error) {
+                                console.error(
+                                    "❌ Error setting map view:",
+                                    error,
+                                );
+                                const alert = document.createElement("div");
+                                alert.textContent =
+                                    "Error centering map. Please try again.";
+                                alert.style.cssText =
+                                    "position:fixed;top:80px;right:20px;background:#fadbd8;color:#721c24;padding:10px 20px;border-radius:8px;z-index:10000;cursor:pointer;";
+                                alert.onclick = () => alert.remove();
+                                document.body.appendChild(alert);
+                                setTimeout(() => alert.remove(), 5000);
+                            }
+                        });
                     },
                     (error) => {
                         loadingAlert.remove();
@@ -492,13 +560,13 @@
                 }
             }
 
-            // Global variables
-            let allBins = [];
-            let filteredBins = [];
-
-            // Make functions available globally immediately
-            window.allBins = [];
-            window.filteredBins = [];
+            // Global variables - avoid redeclaration
+            if (typeof window.allBins === "undefined") {
+                window.allBins = [];
+            }
+            if (typeof window.filteredBins === "undefined") {
+                window.filteredBins = [];
+            }
 
             // Simple alert function
             function showAlert(message, type) {
@@ -634,13 +702,26 @@
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
+                        console.log("Location for centering:", lat, lng);
 
-                        if (window.map) {
-                            window.map.setView([lat, lng], 15);
-                            showAlert("Centered on your location!", "success");
-                        } else {
-                            showAlert("Map not ready yet", "warning");
+                        // Wait for map to be ready
+                        function waitForMapReady(callback) {
+                            if (window.map && window.map.setView) {
+                                callback();
+                            } else {
+                                console.log("Map not ready, waiting...");
+                                setTimeout(
+                                    () => waitForMapReady(callback),
+                                    500,
+                                );
+                            }
                         }
+
+                        waitForMapReady(() => {
+                            window.map.setView([lat, lng], 15);
+                            console.log("Map centered successfully");
+                            showAlert("Centered on your location!", "success");
+                        });
                     },
                     (error) => {
                         let message = "Location error: ";
@@ -770,6 +851,29 @@
                 }
             }
 
+            // Add debugging function for map issues
+            window.debugMapStatus = function () {
+                const status = {
+                    mapExists: !!window.map,
+                    mapMethods: window.map
+                        ? {
+                              setView: typeof window.map.setView,
+                              getCenter: typeof window.map.getCenter,
+                              getZoom: typeof window.map.getZoom,
+                          }
+                        : null,
+                    leafletLoaded: typeof L !== "undefined",
+                    configLoaded: typeof CONFIG !== "undefined",
+                    apiUrl: window.CONFIG ? CONFIG.API_BASE_URL : "undefined",
+                };
+                console.log("🗺️ Map Debug Status:", status);
+                showAlert(
+                    `Map Status: ${window.map ? "Ready" : "Not Ready"}`,
+                    window.map ? "success" : "warning",
+                );
+                return status;
+            };
+
             // Make functions globally available immediately
             window.filterBins = filterBins;
             window.refreshBins = refreshBins;
@@ -818,9 +922,13 @@
 
                         // Center map on shared location after a delay
                         setTimeout(() => {
-                            if (window.map) {
+                            if (window.map && window.map.setView) {
                                 window.map.setView([lat, lng], 15);
                                 showAlert("Showing shared location!", "info");
+                            } else {
+                                console.warn(
+                                    "Map not ready for shared location",
+                                );
                             }
                         }, 3000);
                     }
