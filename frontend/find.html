@@ -82,11 +82,13 @@
             <div class="card card-full fade-in">
                 <div class="card-body" style="padding: 0">
                     <div id="map-container" class="map-container map-fullscreen">
-                        <div class="map-loading">
-                            <div>
-                                <i class="fas fa-map-marker-alt" style="font-size: 3rem; color: #27ae60; margin-bottom: 1rem;"></i>
-                                <p>Loading map and detecting your location...</p>
-                                <div class="loading-spinner"></div>
+                        <div class="map-loading" id="map-loading">
+                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; background: #f8f9fa; border-radius: 8px;">
+                                <div style="text-align: center;">
+                                    <i class="fas fa-map-marker-alt" style="font-size: 3rem; color: #27ae60; margin-bottom: 1rem;"></i>
+                                    <p style="margin: 0; color: #666; margin-bottom: 1rem;">Loading map and detecting your location...</p>
+                                    <div class="loading-spinner"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -126,6 +128,7 @@
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="env-config.js"></script>
         <script src="mobile-fixes.js"></script>
+        <script src="debug-map.js"></script>
         <script src="script.js"></script>
 
         <!-- Minimal page-specific JavaScript -->
@@ -209,6 +212,35 @@
             // Page initialization marker for script.js
             window.findPageReady = true;
 
+            // Monitor map readiness
+            let mapReadyCheckCount = 0;
+            const mapReadyInterval = setInterval(() => {
+                mapReadyCheckCount++;
+
+                if (window.map && typeof window.map.getCenter === 'function') {
+                    console.log("✅ Map is ready and operational");
+                    window.removeMapLoading();
+                    clearInterval(mapReadyInterval);
+                } else if (mapReadyCheckCount > 50) {
+                    console.log("⚠️ Map readiness timeout - forcing debug");
+                    clearInterval(mapReadyInterval);
+                    // Show debug button after timeout
+                    setTimeout(() => {
+                        const container = document.getElementById("map-container");
+                        if (container && !window.map) {
+                            container.innerHTML = `
+                                <div style="padding: 20px; text-align: center; color: #f39c12; background: #fef9e7; border-radius: 8px;">
+                                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                                    <p>Map is taking longer than expected to load</p>
+                                    <button onclick="window.debugMapStatus()" class="btn btn-secondary">Debug Map</button>
+                                    <button onclick="location.reload()" class="btn btn-primary" style="margin-left: 10px;">Refresh Page</button>
+                                </div>
+                            `;
+                        }
+                    }, 1000);
+                }
+            }, 200);
+
             // Add debugging function
             window.debugMapStatus = function() {
                 console.log("🐛 DEBUGGING MAP STATUS:");
@@ -227,7 +259,12 @@
                 if (typeof L !== "undefined" && !window.map && container) {
                     console.log("🔧 Attempting manual map initialization...");
                     try {
-                        container.innerHTML = "";
+                        // Clear loading indicator
+                        const loadingDiv = document.getElementById("map-loading");
+                        if (loadingDiv) {
+                            loadingDiv.remove();
+                        }
+
                         const testMap = L.map("map-container", {
                             center: [16.3163, 80.425],
                             zoom: 13
@@ -243,6 +280,15 @@
                     } catch (e) {
                         console.error("❌ Manual map initialization failed:", e);
                     }
+                }
+            };
+
+            // Helper function to remove loading indicator
+            window.removeMapLoading = function() {
+                const loadingDiv = document.getElementById("map-loading");
+                if (loadingDiv) {
+                    console.log("🧹 Removing map loading indicator");
+                    loadingDiv.remove();
                 }
             };
 
