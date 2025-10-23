@@ -19,7 +19,7 @@
         />
         <meta name="keywords" content="waste bins, nearby, location, map" />
     </head>
-    <body>
+    <body class="find-page">
         <!-- Navigation Bar -->
         <nav class="navbar">
             <div class="nav-container">
@@ -318,15 +318,24 @@
                         try {
                             const fallbackMap = L.map("map-container", {
                                 center: [16.3164, 80.4248], // Vijayawada, India
-                                zoom: 13
+                                zoom: 13,
+                                zoomControl: true,
+                                attributionControl: true
                             });
 
                             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                                attribution: "© OpenStreetMap contributors"
+                                attribution: "© OpenStreetMap contributors",
+                                maxZoom: 19
                             }).addTo(fallbackMap);
 
                             window.map = fallbackMap;
                             map = fallbackMap;
+
+                            // Force resize after creation
+                            setTimeout(() => {
+                                fallbackMap.invalidateSize();
+                                console.log("✅ Fallback map resized");
+                            }, 100);
 
                             console.log("✅ Fallback map initialization successful");
 
@@ -346,9 +355,22 @@
                                     if (typeof addUserMarker === "function") {
                                         addUserMarker(location);
                                     }
+
+                                    // Force resize after location change
+                                    setTimeout(() => {
+                                        fallbackMap.invalidateSize();
+                                    }, 200);
                                 }).catch(err => {
                                     console.log("Location detection failed in fallback, using default");
                                 });
+                            }
+
+                            // Set up resize observer for responsive behavior
+                            if (window.ResizeObserver) {
+                                const resizeObserver = new ResizeObserver(() => {
+                                    fallbackMap.invalidateSize();
+                                });
+                                resizeObserver.observe(container);
                             }
 
                         } catch (e) {

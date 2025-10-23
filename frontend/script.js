@@ -451,6 +451,21 @@ function initializeMap(
             console.log("✅ Map size invalidated");
           }, 100);
 
+          // Set up resize observer for responsive behavior
+          if (window.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(() => {
+              mapInstance.invalidateSize();
+            });
+            resizeObserver.observe(mapContainer);
+          }
+
+          // Handle window resize events
+          window.addEventListener("resize", () => {
+            setTimeout(() => {
+              mapInstance.invalidateSize();
+            }, 100);
+          });
+
           // Add click event listener for adding bins
           mapInstance.on("click", function (e) {
             console.log("Map clicked at:", e.latlng);
@@ -483,6 +498,15 @@ function initializeMap(
             setTimeout(() => {
               mapInstance.invalidateSize();
               console.log("✅ Final map resize completed");
+
+              // Additional resize for find page
+              if (document.body.classList.contains("find-page")) {
+                setTimeout(() => {
+                  mapInstance.invalidateSize();
+                  console.log("✅ Find page specific resize completed");
+                }, 300);
+              }
+
               resolve(mapInstance);
             }, 200);
           });
