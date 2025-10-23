@@ -451,6 +451,21 @@ function initializeMap(
             console.log("✅ Map size invalidated");
           }, 100);
 
+          // Set up resize observer for responsive behavior
+          if (window.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(() => {
+              mapInstance.invalidateSize();
+            });
+            resizeObserver.observe(mapContainer);
+          }
+
+          // Handle window resize events
+          window.addEventListener("resize", () => {
+            setTimeout(() => {
+              mapInstance.invalidateSize();
+            }, 100);
+          });
+
           // Add click event listener for adding bins
           mapInstance.on("click", function (e) {
             console.log("Map clicked at:", e.latlng);
@@ -483,6 +498,15 @@ function initializeMap(
             setTimeout(() => {
               mapInstance.invalidateSize();
               console.log("✅ Final map resize completed");
+
+              // Additional resize for find page
+              if (document.body.classList.contains("find-page")) {
+                setTimeout(() => {
+                  mapInstance.invalidateSize();
+                  console.log("✅ Find page specific resize completed");
+                }, 300);
+              }
+
               resolve(mapInstance);
             }, 200);
           });
@@ -504,13 +528,20 @@ function initializeMap(
       }, 250);
     } catch (error) {
       console.error("❌ Error initializing map:", error);
+      const isLocalhost =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+      const debugButton = isLocalhost
+        ? '<button onclick="window.debugMapIssue()" class="btn btn-secondary" style="margin-left: 10px;">Debug</button>'
+        : "";
+
       mapContainer.innerHTML = `
-        <div style="padding: 20px; text-align: center; color: #e74c3c; background: #fadbd8; border-radius: 8px;">
-          <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-          <p>Failed to load map: ${error.message}</p>
-          <button onclick="location.reload()" class="btn btn-primary">Refresh Page</button>
-          <button onclick="window.debugMapIssue()" class="btn btn-secondary" style="margin-left: 10px;">Debug</button>
-        </div>
+          <div style="padding: 20px; text-align: center; color: #e74c3c; background: #fadbd8; border-radius: 8px;">
+              <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+              <p>Failed to load map: ${error.message}</p>
+              <button onclick="location.reload()" class="btn btn-primary">Refresh Page</button>
+              ${debugButton}
+          </div>
       `;
       reject(error);
     }
@@ -1329,34 +1360,45 @@ function shareLocation() {
 }
 
 // ===== DEBUG FUNCTIONS =====
-window.debugMapIssue = function () {
-  console.log("🐛 DEBUG MAP ISSUE");
-  console.log("Leaflet loaded:", typeof L !== "undefined");
-  console.log(
-    "Map container exists:",
-    !!document.getElementById("map-container"),
-  );
-  console.log("window.map exists:", !!window.map);
-  console.log("CONFIG exists:", typeof CONFIG !== "undefined");
-  console.log("CONFIG value:", CONFIG);
-
-  const container = document.getElementById("map-container");
-  if (container) {
+// Debug function - only available in localhost
+if (
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+) {
+  window.debugMapIssue = function () {
+    console.log("🐛 DEBUG MAP ISSUE");
+    console.log("Leaflet loaded:", typeof L !== "undefined");
     console.log(
-      "Container dimensions:",
-      container.offsetWidth,
-      "x",
-      container.offsetHeight,
+      "Map container exists:",
+      !!document.getElementById("map-container"),
     );
-    console.log("Container style:", container.style.cssText);
-  }
+    console.log("window.map exists:", !!window.map);
+    console.log("CONFIG exists:", typeof CONFIG !== "undefined");
+    console.log("CONFIG value:", CONFIG);
 
-  // Try to reinitialize
-  if (typeof L !== "undefined" && CONFIG) {
-    console.log("Attempting to reinitialize map...");
-    initializeMap("map-container");
-  }
-};
+    const container = document.getElementById("map-container");
+    if (container) {
+      console.log(
+        "Container dimensions:",
+        container.offsetWidth,
+        "x",
+        container.offsetHeight,
+      );
+      console.log("Container style:", container.style.cssText);
+    }
+
+    // Try to reinitialize
+    if (typeof L !== "undefined" && CONFIG) {
+      console.log("Attempting to reinitialize map...");
+      initializeMap("map-container");
+    }
+  };
+} else {
+  // Production fallback - no debug functionality
+  window.debugMapIssue = function () {
+    console.log("Debug functionality disabled in production");
+  };
+}
 
 // ===== GLOBAL FUNCTIONS (for onclick handlers) =====
 window.openNavigation = openNavigation;

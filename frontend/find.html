@@ -19,7 +19,7 @@
         />
         <meta name="keywords" content="waste bins, nearby, location, map" />
     </head>
-    <body>
+    <body class="find-page">
         <!-- Navigation Bar -->
         <nav class="navbar">
             <div class="nav-container">
@@ -128,7 +128,14 @@
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="env-config.js"></script>
         <script src="mobile-fixes.js"></script>
-        <script src="debug-map.js"></script>
+        <script>
+            // Only load debug script in localhost development
+            if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+                const debugScript = document.createElement('script');
+                debugScript.src = 'debug-map.js';
+                document.head.appendChild(debugScript);
+            }
+        </script>
         <script src="script.js"></script>
 
         <!-- Minimal page-specific JavaScript -->
@@ -224,15 +231,19 @@
                 } else if (mapReadyCheckCount > 50) {
                     console.log("⚠️ Map readiness timeout - forcing debug");
                     clearInterval(mapReadyInterval);
-                    // Show debug button after timeout
+                    // Show timeout message
                     setTimeout(() => {
                         const container = document.getElementById("map-container");
                         if (container && !window.map) {
+                            const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+                            const debugButton = isLocalhost ?
+                                '<button onclick="window.debugMapStatus()" class="btn btn-secondary">Debug Map</button>' : '';
+
                             container.innerHTML = `
                                 <div style="padding: 20px; text-align: center; color: #f39c12; background: #fef9e7; border-radius: 8px;">
                                     <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
                                     <p>Map is taking longer than expected to load</p>
-                                    <button onclick="window.debugMapStatus()" class="btn btn-secondary">Debug Map</button>
+                                    ${debugButton}
                                     <button onclick="location.reload()" class="btn btn-primary" style="margin-left: 10px;">Refresh Page</button>
                                 </div>
                             `;
@@ -292,8 +303,8 @@
                 }
             };
 
-            // Add debug button in development
-            if (window.location.hostname.includes("localhost") || window.location.hostname.includes("netlify")) {
+            // Add debug button only in localhost development
+            if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
                 setTimeout(() => {
                     const debugBtn = document.createElement("button");
                     debugBtn.textContent = "🐛 Debug Map";
@@ -318,15 +329,24 @@
                         try {
                             const fallbackMap = L.map("map-container", {
                                 center: [16.3164, 80.4248], // Vijayawada, India
-                                zoom: 13
+                                zoom: 13,
+                                zoomControl: true,
+                                attributionControl: true
                             });
 
                             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                                attribution: "© OpenStreetMap contributors"
+                                attribution: "© OpenStreetMap contributors",
+                                maxZoom: 19
                             }).addTo(fallbackMap);
 
                             window.map = fallbackMap;
                             map = fallbackMap;
+
+                            // Force resize after creation
+                            setTimeout(() => {
+                                fallbackMap.invalidateSize();
+                                console.log("✅ Fallback map resized");
+                            }, 100);
 
                             console.log("✅ Fallback map initialization successful");
 
@@ -346,9 +366,22 @@
                                     if (typeof addUserMarker === "function") {
                                         addUserMarker(location);
                                     }
+
+                                    // Force resize after location change
+                                    setTimeout(() => {
+                                        fallbackMap.invalidateSize();
+                                    }, 200);
                                 }).catch(err => {
                                     console.log("Location detection failed in fallback, using default");
                                 });
+                            }
+
+                            // Set up resize observer for responsive behavior
+                            if (window.ResizeObserver) {
+                                const resizeObserver = new ResizeObserver(() => {
+                                    fallbackMap.invalidateSize();
+                                });
+                                resizeObserver.observe(container);
                             }
 
                         } catch (e) {
