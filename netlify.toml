@@ -12,12 +12,13 @@
   # Node.js version
   NODE_VERSION = "18"
 
-# Redirect rules for SPA-like behavior
+# Simple redirect rules that preserve HTML file access
 [[redirects]]
-  # Redirect all routes to index.html for client-side routing
-  from = "/*"
-  to = "/index.html"
+  # Handle API requests - redirect to your backend
+  from = "/api/*"
+  to = "https://smart-waste-management-production.up.railway.app/api/:splat"
   status = 200
+  force = true
 
 # Headers for security and performance
 [[headers]]
@@ -50,10 +51,3 @@
 # Environment variables (for branch deploys)
 [context.branch-deploy.environment]
   NODE_ENV = "development"
-
-# Handle API requests - redirect to your backend
-[[redirects]]
-  from = "/api/*"
-  to = "https://your-backend-url.com/api/:splat"
-  status = 200
-  force = true

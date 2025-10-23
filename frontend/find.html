@@ -304,6 +304,68 @@
             }
 
             console.log("✅ Find page HTML loaded and ready for script.js initialization");
+
+            // Fallback map initialization for deployment compatibility
+            setTimeout(() => {
+                if (!window.map && typeof L !== "undefined") {
+                    console.log("🔄 Fallback: Script.js didn't initialize map, doing it manually");
+
+                    const container = document.getElementById("map-container");
+                    if (container) {
+                        // Clear loading content
+                        container.innerHTML = "";
+
+                        try {
+                            const fallbackMap = L.map("map-container", {
+                                center: [16.3164, 80.4248], // Vijayawada, India
+                                zoom: 13
+                            });
+
+                            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                                attribution: "© OpenStreetMap contributors"
+                            }).addTo(fallbackMap);
+
+                            window.map = fallbackMap;
+                            map = fallbackMap;
+
+                            console.log("✅ Fallback map initialization successful");
+
+                            // Try to load bins if functions are available
+                            if (typeof loadBinsData === "function") {
+                                loadBinsData();
+                            } else if (typeof window.smartWasteApp !== "undefined" && window.smartWasteApp.loadBinsData) {
+                                window.smartWasteApp.loadBinsData();
+                            }
+
+                            // Try to get user location
+                            if (navigator.geolocation && typeof getCurrentLocation === "function") {
+                                getCurrentLocation().then(location => {
+                                    fallbackMap.setView([location.lat, location.lng], 15);
+
+                                    // Add user marker if function is available
+                                    if (typeof addUserMarker === "function") {
+                                        addUserMarker(location);
+                                    }
+                                }).catch(err => {
+                                    console.log("Location detection failed in fallback, using default");
+                                });
+                            }
+
+                        } catch (e) {
+                            console.error("❌ Fallback map initialization failed:", e);
+                            container.innerHTML = `
+                                <div style="padding: 20px; text-align: center; color: #e74c3c; background: #fadbd8; border-radius: 8px;">
+                                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                                    <p>Map failed to load. Please refresh the page.</p>
+                                    <button onclick="location.reload()" class="btn btn-primary">Refresh Page</button>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+            }, 3000); // Wait 3 seconds for main script to initialize
+
+
         </script>
     </body>
 </html>

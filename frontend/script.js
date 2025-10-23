@@ -1155,40 +1155,46 @@ document.addEventListener("DOMContentLoaded", function () {
   const filename = path.split("/").pop() || "index.html";
 
   console.log("Current page:", filename);
+  console.log("Full path:", path);
 
-  switch (filename) {
-    case "find.html":
-      initializeFindPage();
-      break;
+  // Check for find page - handle both find.html and /find routes
+  const isFindPage =
+    filename === "find.html" ||
+    path.includes("/find") ||
+    document.getElementById("map-container") !== null;
 
-    case "add.html":
-      initializeAddPage();
+  // Check for add page - handle both add.html and /add routes
+  const isAddPage =
+    filename === "add.html" ||
+    path.includes("/add") ||
+    document.getElementById("add-bin-form") !== null;
 
-      // Add form submission handler
-      const addBinForm = document.getElementById("add-bin-form");
-      if (addBinForm) {
-        addBinForm.addEventListener("submit", handleAddBin);
-        console.log("Form submission handler attached");
-      }
+  if (isFindPage) {
+    console.log("Detected find page - initializing map");
+    initializeFindPage();
+  } else if (isAddPage) {
+    console.log("Detected add page - initializing add functionality");
+    initializeAddPage();
 
-      // Add current location button handler
-      const currentLocationBtn = document.getElementById(
-        "current-location-btn",
-      );
-      if (currentLocationBtn) {
-        currentLocationBtn.addEventListener("click", useCurrentLocation);
-        console.log("Current location button handler attached");
-      }
-      break;
+    // Add form submission handler
+    const addBinForm = document.getElementById("add-bin-form");
+    if (addBinForm) {
+      addBinForm.addEventListener("submit", handleAddBin);
+      console.log("Form submission handler attached");
+    }
 
-    case "index.html":
-    default:
-      console.log("Homepage loaded - loading statistics");
-      // Load statistics for homepage
-      loadBinsData().then((bins) => {
-        updateStatistics(bins);
-      });
-      break;
+    // Add current location button handler
+    const currentLocationBtn = document.getElementById("current-location-btn");
+    if (currentLocationBtn) {
+      currentLocationBtn.addEventListener("click", useCurrentLocation);
+      console.log("Current location button handler attached");
+    }
+  } else {
+    console.log("Homepage loaded - loading statistics");
+    // Load statistics for homepage
+    loadBinsData().then((bins) => {
+      updateStatistics(bins);
+    });
   }
 
   console.log("Page initialization complete");
