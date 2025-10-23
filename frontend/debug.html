@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Map Initialization Test</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .debug-info {
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .status-ok { color: #28a745; }
+        .status-error { color: #dc3545; }
+        .status-warning { color: #ffc107; }
+        #map-container {
+            height: 400px;
+            width: 100%;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <h1>🐛 Map Debug Panel</h1>
+
+        <div class="debug-panel">
+            <h3>System Status</h3>
+            <div id="system-status" class="debug-info"></div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>Map Container</h3>
+            <div id="map-container">
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                    <span>Map will be initialized here...</span>
+                </div>
+            </div>
+
+            <div class="test-buttons">
+                <button class="btn btn-primary" onclick="initializeMapTest()">Initialize Map</button>
+                <button class="btn btn-success" onclick="testMapFunctions()">Test Map Functions</button>
+                <button class="btn btn-warning" onclick="clearMap()">Clear Map</button>
+            </div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>Console Log</h3>
+            <div id="console-log" class="debug-info" style="max-height: 300px; overflow-y: auto; background: #000; color: #0f0; padding: 10px;"></div>
+        </div>
+    </div>
+
+    <!-- Load scripts in order -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="env-config.js"></script>
+
+    <script>
+        // Custom console.log that also shows in the debug panel
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addToDebugLog(message, type = 'log') {
+            const logElement = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#f00' : type === 'warn' ? '#fa0' : '#0f0';
+            logElement.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToDebugLog(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToDebugLog(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToDebugLog(args.join(' '), 'warn');
+        };
+
+        // Global variables
+        let map = null;
+        let testMarkers = [];
+
+        // System status check
+        function checkSystemStatus() {
+            const statusElement = document.getElementById('system-status');
+            let status = '';
+
+            // Check Leaflet
+            const leafletOK = typeof L !== 'undefined';
+            status += `Leaflet Library: <span class="${leafletOK ? 'status-ok' : 'status-error'}">${leafletOK ? '✓ Loaded' : '✗ Not Loaded'}</span><br>`;
+
+            // Check CONFIG
+            const configOK = typeof CONFIG !== 'undefined';
+            status += `CONFIG: <span class="${configOK ? 'status-ok' : 'status-error'}">${configOK ? '✓ Loaded' : '✗ Not Loaded'}</span><br>`;
+
+            // Check Map Container
+            const mapContainer = document.getElementById('map-container');
+            const containerOK = mapContainer !== null;
+            status += `Map Container: <span class="${containerOK ? 'status-ok' : 'status-error'}">${containerOK ? '✓ Found' : '✗ Not Found'}</span><br>`;
+
+            // Check Map Instance
+            const mapOK = map !== null && typeof map.setView === 'function';
+            status += `Map Instance: <span class="${mapOK ? 'status-ok' : 'status-error'}">${mapOK ? '✓ Ready' : '✗ Not Initialized'}</span><br>`;
+
+            // Check window.map
+            const windowMapOK = window.map !== null && typeof window.map === 'object';
+            status += `window.map: <span class="${windowMapOK ? 'status-ok' : 'status-error'}">${windowMapOK ? '✓ Available' : '✗ Not Set'}</span><br>`;
+
+            statusElement.innerHTML = status;
+
+            // Return overall status
+            return leafletOK && configOK && containerOK;
+        }
+
+        // Initialize map test
+        function initializeMapTest() {
+            console.log('🗺️ Starting map initialization test...');
+
+            const mapContainer = document.getElementById('map-container');
+            if (!mapContainer) {
+                console.error('Map container not found!');
+                return;
+            }
+
+            // Clear container
+            mapContainer.innerHTML = '';
+
+            try {
+                // Create map instance
+                map = L.map('map-container', {
+                    center: [16.3163, 80.425], // Default center
+                    zoom: 13,
+                    zoomControl: true,
+                    attributionControl: true
+                });
+
+                console.log('✓ Map instance created');
+
+                // Add tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+
+                console.log('✓ Tile layer added');
+
+                // Set global reference
+                window.map = map;
+                console.log('✓ window.map reference set');
+
+                // Test map ready event
+                map.whenReady(function() {
+                    console.log('✅ Map is fully ready and operational!');
+                });
+
+                // Add a test marker
+                const testMarker = L.marker([16.3163, 80.425]).addTo(map);
+                testMarker.bindPopup('Test marker - Map is working!');
+                testMarkers.push(testMarker);
+
+                console.log('✅ Map initialization successful!');
+
+            } catch (error) {
+                console.error('❌ Map initialization failed:', error);
+                mapContainer.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #dc3545; flex-direction: column;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                        <div>Map initialization failed</div>
+                        <div style="font-size: 14px; margin-top: 10px;">${error.message}</div>
+                    </div>
+                `;
+            }
+
+            // Update status
+            setTimeout(checkSystemStatus, 100);
+        }
+
+        // Test map functions
+        function testMapFunctions() {
+            console.log('🧪 Testing map functions...');
+
+            if (!map) {
+                console.error('Map not initialized! Run "Initialize Map" first.');
+                return;
+            }
+
+            try {
+                // Test setView
+                const testLat = 16.3163 + (Math.random() - 0.5) * 0.01;
+                const testLng = 80.425 + (Math.random() - 0.5) * 0.01;
+                map.setView([testLat, testLng], 15);
+                console.log(`✓ setView test passed: [${testLat.toFixed(4)}, ${testLng.toFixed(4)}]`);
+
+                // Test getCenter
+                const center = map.getCenter();
+                console.log(`✓ getCenter test passed: [${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}]`);
+
+                // Test getZoom
+                const zoom = map.getZoom();
+                console.log(`✓ getZoom test passed: ${zoom}`);
+
+                // Add random marker
+                const randomMarker = L.marker([testLat, testLng], {
+                    icon: L.divIcon({
+                        className: 'test-marker',
+                        html: '<div style="background: #28a745; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+
+                randomMarker.bindPopup('Random test marker!');
+                testMarkers.push(randomMarker);
+                console.log('✓ Marker addition test passed');
+
+                console.log('✅ All map function tests passed!');
+
+            } catch (error) {
+                console.error('❌ Map function test failed:', error);
+            }
+        }
+
+        // Clear map
+        function clearMap() {
+            console.log('🧹 Clearing map...');
+
+            // Remove test markers
+            testMarkers.forEach(marker => {
+                if (map && marker) {
+                    map.removeLayer(marker);
+                }
+            });
+            testMarkers = [];
+
+            // Clear map instance
+            if (map) {
+                map.remove();
+                map = null;
+                window.map = null;
+                console.log('✓ Map instance cleared');
+            }
+
+            // Clear container
+            const mapContainer = document.getElementById('map-container');
+            if (mapContainer) {
+                mapContainer.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                        <span>Map cleared - ready for reinitialization</span>
+                    </div>
+                `;
+            }
+
+            // Update status
+            setTimeout(checkSystemStatus, 100);
+        }
+
+        // Auto-update status
+        function startStatusUpdater() {
+            setInterval(checkSystemStatus, 2000);
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Debug page loaded');
+            checkSystemStatus();
+            startStatusUpdater();
+
+            // Auto-initialize map after a short delay
+            setTimeout(() => {
+                console.log('⏰ Auto-initializing map in 2 seconds...');
+                setTimeout(initializeMapTest, 2000);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
