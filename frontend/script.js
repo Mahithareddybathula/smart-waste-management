@@ -857,6 +857,9 @@ async function initializeFindPage() {
       }
     };
     window.loadBinsOnMap = loadBinsData;
+
+    // Set up global addBinMarkers function for filtering
+    window.addBinMarkers = addBinMarkers;
   } else {
     console.error("❌ Map initialization failed");
   }
@@ -889,6 +892,13 @@ async function initializeFindPage() {
 
   // Load bins data
   await loadBinsData();
+
+  // Initialize find page specific data
+  if (typeof window.allBins !== "undefined") {
+    window.allBins = allBins;
+    window.filteredBins = allBins;
+    updateVisibleStats(allBins);
+  }
 }
 
 /**
@@ -1100,10 +1110,142 @@ document.addEventListener("DOMContentLoaded", function () {
   console.log("Page initialization complete");
 });
 
+// ===== FIND PAGE FUNCTIONS =====
+
+/**
+ * Update visible statistics for find page
+ */
+function updateVisibleStats(bins) {
+  if (!bins) return;
+
+  const stats = {
+    total: bins.length,
+    empty: bins.filter((bin) => bin.status === "Empty").length,
+    halfFull: bins.filter((bin) => bin.status === "Half-Full").length,
+    full: bins.filter((bin) => bin.status === "Full").length,
+  };
+
+  // Update find page specific elements
+  const elements = {
+    "visible-total": stats.total,
+    "visible-empty": stats.empty,
+    "visible-half-full": stats.halfFull,
+    "visible-full": stats.full,
+  };
+
+  for (const [id, value] of Object.entries(elements)) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = value;
+    }
+  }
+
+  console.log("Find page stats updated:", stats);
+}
+
+/**
+ * Refresh bins data for find page
+ */
+async function refreshBins() {
+  console.log("Refreshing bins data...");
+  showAlert("Refreshing bins data...", "info");
+
+  try {
+    await loadBinsData();
+
+    // Update find page statistics
+    updateVisibleStats(allBins);
+
+    // Update global variables for find page
+    if (typeof window.allBins !== "undefined") {
+      window.allBins = allBins;
+      window.filteredBins = allBins;
+    }
+
+    showAlert(`Refreshed! Found ${allBins.length} bins`, "success");
+  } catch (error) {
+    console.error("Error refreshing bins:", error);
+    showAlert("Could not refresh data. Server may be offline.", "error");
+  }
+}
+
+/**
+ * Center map on user location
+ */
+async function centerOnUser() {
+  console.log("📍 Centering on user location...");
+
+  if (!navigator.geolocation) {
+    showAlert("Geolocation not supported by your browser", "error");
+    return;
+  }
+
+  if (!map) {
+    showAlert("Map not ready. Please wait a moment and try again.", "warning");
+    return;
+  }
+
+  showAlert("Getting your location...", "info");
+
+  try {
+    const position = await getCurrentLocation();
+    const { lat, lng } = position;
+
+    // Center map on user location
+    map.setView([lat, lng], 15);
+
+    // Add or update user location marker
+    addUserMarker({ lat, lng });
+
+    showAlert("Centered on your location! 📍", "success");
+  } catch (error) {
+    console.error("Location error:", error);
+    let message = "Location error: ";
+
+    if (error.code === 1) {
+      message += "Permission denied. Please allow location access.";
+    } else if (error.code === 2) {
+      message += "Position unavailable. Check your connection.";
+    } else if (error.code === 3) {
+      message += "Request timeout. Please try again.";
+    } else {
+      message += "Unknown error occurred.";
+    }
+
+    showAlert(message, "error");
+  }
+}
+
+/**
+ * Share current location
+ */
+function shareLocation() {
+  console.log("Sharing location...");
+
+  const currentUrl = window.location.href;
+
+  if (navigator.clipboard) {
+    navigator.clipboard
+      .writeText(currentUrl)
+      .then(() => {
+        showAlert("Page URL copied to clipboard!", "success");
+      })
+      .catch(() => {
+        showAlert(`Share this URL: ${currentUrl}`, "info");
+      });
+  } else {
+    showAlert(`Share this URL: ${currentUrl}`, "info");
+  }
+}
+
 // ===== GLOBAL FUNCTIONS (for onclick handlers) =====
 window.openNavigation = openNavigation;
 window.updateBinDialog = updateBinDialog;
 window.confirmDeleteBin = confirmDeleteBin;
+window.refreshBins = refreshBins;
+window.centerOnUser = centerOnUser;
+window.shareLocation = shareLocation;
+window.updateVisibleStats = updateVisibleStats;
 window.useCurrentLocation = useCurrentLocation;
 
 // Export for other modules
