@@ -115,10 +115,11 @@
 
             <!-- Map Container -->
             <div class="map-section">
-                <div id="map-container" class="map-container">
-                    <div class="map-loading">
+                <div id="map-container" class="map-container" style="height: 500px; min-height: 500px; width: 100%; background: #f8f9fa;">
+                    <div class="map-loading" style="height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                        <div style="font-size: 3rem; color: #27ae60; margin-bottom: 1rem;">🗺️</div>
+                        <p style="margin: 0; color: #666;">Loading map...</p>
                         <div class="loading-spinner"></div>
-                        <p>Loading map...</p>
                     </div>
                 </div>
             </div>
@@ -243,6 +244,54 @@
 
             // Page initialization marker for script.js
             window.findPageReady = true;
+
+            // Add debugging function
+            window.debugMapStatus = function() {
+                console.log("🐛 DEBUGGING MAP STATUS:");
+                console.log("- Leaflet loaded:", typeof L !== "undefined");
+                console.log("- Map container exists:", !!document.getElementById("map-container"));
+                console.log("- window.map exists:", !!window.map);
+                console.log("- CONFIG exists:", typeof CONFIG !== "undefined");
+
+                const container = document.getElementById("map-container");
+                if (container) {
+                    console.log("- Container dimensions:", container.offsetWidth + "x" + container.offsetHeight);
+                    console.log("- Container visible:", container.offsetWidth > 0 && container.offsetHeight > 0);
+                }
+
+                // Try manual map initialization if needed
+                if (typeof L !== "undefined" && !window.map && container) {
+                    console.log("🔧 Attempting manual map initialization...");
+                    try {
+                        container.innerHTML = "";
+                        const testMap = L.map("map-container", {
+                            center: [16.3163, 80.425],
+                            zoom: 13
+                        });
+                        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                            attribution: "© OpenStreetMap contributors"
+                        }).addTo(testMap);
+                        window.map = testMap;
+                        console.log("✅ Manual map initialization successful!");
+
+                        // Force resize
+                        setTimeout(() => testMap.invalidateSize(), 100);
+                    } catch (e) {
+                        console.error("❌ Manual map initialization failed:", e);
+                    }
+                }
+            };
+
+            // Add debug button in development
+            if (window.location.hostname.includes("localhost") || window.location.hostname.includes("netlify")) {
+                setTimeout(() => {
+                    const debugBtn = document.createElement("button");
+                    debugBtn.textContent = "🐛 Debug Map";
+                    debugBtn.style.cssText = "position:fixed;top:10px;right:10px;z-index:9999;background:#dc3545;color:white;border:none;padding:5px 10px;border-radius:4px;font-size:12px;";
+                    debugBtn.onclick = window.debugMapStatus;
+                    document.body.appendChild(debugBtn);
+                }, 2000);
+            }
 
             console.log("✅ Find page HTML loaded and ready for script.js initialization");
         </script>

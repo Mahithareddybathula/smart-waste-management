@@ -365,81 +365,136 @@ async function checkGeolocationSupport() {
 // ===== MAP FUNCTIONS =====
 
 /**
- * Initialize Leaflet map
+ * Initialize map with Leaflet
  */
 function initializeMap(
   containerId,
   center = CONFIG.MAP_DEFAULT_CENTER,
   zoom = CONFIG.MAP_DEFAULT_ZOOM,
 ) {
-  console.log("Initializing map...");
+  console.log("🗺️ Initializing map...");
+  console.log("Container ID:", containerId);
+  console.log("Center:", center);
+  console.log("Zoom:", zoom);
+  console.log("Leaflet available:", typeof L !== "undefined");
 
   const mapContainer = document.getElementById(containerId);
   if (!mapContainer) {
-    console.error(`Map container with ID '${containerId}' not found`);
+    console.error(`❌ Map container with ID '${containerId}' not found`);
     return null;
   }
+
+  console.log("✅ Map container found:", mapContainer);
+  console.log(
+    "Container dimensions:",
+    mapContainer.offsetWidth,
+    "x",
+    mapContainer.offsetHeight,
+  );
 
   // Clear any existing map content
   mapContainer.innerHTML = "";
 
+  // Add loading indicator
+  mapContainer.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; height: 400px; background: #f8f9fa; border-radius: 8px;">
+      <div style="text-align: center;">
+        <div style="font-size: 3rem; color: #27ae60; margin-bottom: 1rem;">🗺️</div>
+        <p style="margin: 0; color: #666;">Initializing map...</p>
+      </div>
+    </div>
+  `;
+
   try {
-    console.log("🗺️ Creating Leaflet map instance...");
+    console.log("🚀 Creating Leaflet map instance...");
 
-    // Initialize Leaflet map
-    map = L.map(containerId, {
-      center: [center.lat, center.lng],
-      zoom: zoom,
-      zoomControl: true,
-      attributionControl: true,
-    });
+    // Wait a bit for container to be ready
+    setTimeout(() => {
+      try {
+        // Initialize Leaflet map
+        map = L.map(containerId, {
+          center: [center.lat, center.lng],
+          zoom: zoom,
+          zoomControl: true,
+          attributionControl: true,
+        });
 
-    // Immediately set global reference and verify
-    window.map = map;
-    console.log("✅ Map initialized and window.map set:", !!window.map);
-    console.log("✅ Map methods available:", {
-      setView: typeof window.map.setView,
-      getCenter: typeof window.map.getCenter,
-    });
+        // Immediately set global reference and verify
+        window.map = map;
+        console.log("✅ Map initialized and window.map set:", !!window.map);
+        console.log("✅ Map methods available:", {
+          setView: typeof window.map.setView,
+          getCenter: typeof window.map.getCenter,
+        });
 
-    // Add OpenStreetMap tiles
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-      subdomains: ["a", "b", "c"],
-    }).addTo(map);
-
-    // Add click event listener for adding bins
-    map.on("click", function (e) {
-      console.log("Map clicked at:", e.latlng);
-      if (document.body.classList.contains("add-bin-mode")) {
-        selectedLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
-        updateLocationInputs(selectedLocation);
-        addTempMarker(selectedLocation);
-        showAlert(
-          "Location selected! You can now choose the bin status.",
-          "success",
+        // Add OpenStreetMap tiles
+        const tileLayer = L.tileLayer(
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {
+            attribution:
+              '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+            subdomains: ["a", "b", "c"],
+          },
         );
+
+        tileLayer.addTo(map);
+        console.log("✅ Tile layer added");
+
+        // Force map to resize and invalidate
+        setTimeout(() => {
+          map.invalidateSize();
+          console.log("✅ Map size invalidated");
+        }, 100);
+
+        // Add click event listener for adding bins
+        map.on("click", function (e) {
+          console.log("Map clicked at:", e.latlng);
+          if (document.body.classList.contains("add-bin-mode")) {
+            selectedLocation = { lat: e.latlng.lat, lng: e.latlng.lng };
+            updateLocationInputs(selectedLocation);
+            addTempMarker(selectedLocation);
+            showAlert(
+              "Location selected! You can now choose the bin status.",
+              "success",
+            );
+          }
+        });
+
+        // Map ready event
+        map.whenReady(function () {
+          console.log("✅ Map is fully ready and operational");
+          window.map = map; // Ensure global reference is set
+          showAlert("Map loaded successfully!", "success");
+
+          // Force another resize after ready
+          setTimeout(() => {
+            map.invalidateSize();
+          }, 200);
+        });
+
+        console.log("✅ Map initialized successfully");
+      } catch (innerError) {
+        console.error("❌ Inner map initialization error:", innerError);
+        mapContainer.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: #e74c3c; background: #fadbd8; border-radius: 8px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+            <p>Map initialization failed: ${innerError.message}</p>
+            <button onclick="location.reload()" class="btn btn-primary">Refresh Page</button>
+          </div>
+        `;
       }
-    });
+    }, 250);
 
-    // Map ready event
-    map.whenReady(function () {
-      console.log("✅ Map is fully ready and operational");
-      window.map = map; // Ensure global reference is set
-      showAlert("Map loaded successfully!", "success");
-    });
-
-    console.log("Map initialized successfully");
     return map;
   } catch (error) {
-    console.error("Error initializing map:", error);
+    console.error("❌ Error initializing map:", error);
     mapContainer.innerHTML = `
-            <div style="padding: 20px; text-align: center; color: #e74c3c;">
+            <div style="padding: 20px; text-align: center; color: #e74c3c; background: #fadbd8; border-radius: 8px;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                <p>Failed to load map. Please refresh the page.</p>
+                <p>Failed to load map: ${error.message}</p>
                 <button onclick="location.reload()" class="btn btn-primary">Refresh Page</button>
+                <button onclick="window.debugMapIssue()" class="btn btn-secondary" style="margin-left: 10px;">Debug</button>
             </div>
         `;
     return null;
@@ -842,6 +897,11 @@ async function initializeFindPage() {
 
   // Initialize map with immediate availability
   console.log("🗺️ Starting map initialization...");
+
+  // Add debug info
+  console.log("CONFIG available:", typeof CONFIG !== "undefined");
+  console.log("CONFIG value:", CONFIG);
+
   const mapInstance = initializeMap("map-container");
 
   if (mapInstance) {
@@ -1237,6 +1297,36 @@ function shareLocation() {
     showAlert(`Share this URL: ${currentUrl}`, "info");
   }
 }
+
+// ===== DEBUG FUNCTIONS =====
+window.debugMapIssue = function () {
+  console.log("🐛 DEBUG MAP ISSUE");
+  console.log("Leaflet loaded:", typeof L !== "undefined");
+  console.log(
+    "Map container exists:",
+    !!document.getElementById("map-container"),
+  );
+  console.log("window.map exists:", !!window.map);
+  console.log("CONFIG exists:", typeof CONFIG !== "undefined");
+  console.log("CONFIG value:", CONFIG);
+
+  const container = document.getElementById("map-container");
+  if (container) {
+    console.log(
+      "Container dimensions:",
+      container.offsetWidth,
+      "x",
+      container.offsetHeight,
+    );
+    console.log("Container style:", container.style.cssText);
+  }
+
+  // Try to reinitialize
+  if (typeof L !== "undefined" && CONFIG) {
+    console.log("Attempting to reinitialize map...");
+    initializeMap("map-container");
+  }
+};
 
 // ===== GLOBAL FUNCTIONS (for onclick handlers) =====
 window.openNavigation = openNavigation;
